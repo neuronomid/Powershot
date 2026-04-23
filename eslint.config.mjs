@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local/browser test artifacts:
+    "coverage/**",
+    "playwright-report/**",
+    "playwright-screenshots/**",
+    "test-results/**",
+    "debug-*.js",
+    "inspect-phase1.js",
   ]),
 ]);
 

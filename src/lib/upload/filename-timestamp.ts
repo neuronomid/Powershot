@@ -12,7 +12,18 @@ const toDate = (
   s: number,
 ): Date | null => {
   const date = new Date(y, mo - 1, d, h, mi, s);
-  return Number.isNaN(date.getTime()) ? null : date;
+  if (Number.isNaN(date.getTime())) return null;
+  if (
+    date.getFullYear() !== y ||
+    date.getMonth() !== mo - 1 ||
+    date.getDate() !== d ||
+    date.getHours() !== h ||
+    date.getMinutes() !== mi ||
+    date.getSeconds() !== s
+  ) {
+    return null;
+  }
+  return date;
 };
 
 // macOS: "Screen Shot 2024-03-15 at 9.41.22 AM.png" or "Screenshot 2024-03-15 at 14.23.01.png"

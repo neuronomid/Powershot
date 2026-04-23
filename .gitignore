@@ -12,6 +12,11 @@
 
 # testing
 /coverage
+/playwright-report
+/playwright-screenshots
+/test-results
+/debug-*.js
+/inspect-phase1.js
 
 # next.js
 /.next/

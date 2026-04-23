@@ -1,5 +1,6 @@
 "use client";
 
+import { Upload } from "lucide-react";
 import { useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 
@@ -63,14 +64,19 @@ export function UploadSurface({ onFilesAdded, children }: UploadSurfaceProps) {
       {isDragActive && (
         <div
           className={cn(
-            "pointer-events-none fixed inset-0 z-50 flex items-center justify-center",
-            "bg-background/80 backdrop-blur-sm",
+            "pointer-events-none fixed inset-0 z-[100] flex items-center justify-center",
+            "bg-background/40 backdrop-blur-md animate-in fade-in duration-300",
           )}
         >
-          <div className="rounded-2xl border-2 border-dashed border-primary bg-background/60 px-10 py-8 text-center shadow-lg">
-            <p className="text-lg font-semibold">Drop screenshots to add</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              PNG, JPG, WebP, HEIC
+          <div className="rounded-3xl border-2 border-dashed border-primary bg-background/80 px-12 py-10 text-center shadow-2xl ring-1 ring-border/50 animate-in zoom-in-95 duration-300">
+            <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Upload className="size-8" />
+            </div>
+            <p className="text-2xl font-bold tracking-tight text-foreground">
+              Drop screenshots to add
+            </p>
+            <p className="mt-2 text-sm font-medium text-muted-foreground">
+              PNG, JPG, WebP, or HEIC
             </p>
           </div>
         </div>

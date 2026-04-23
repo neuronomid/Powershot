@@ -3,7 +3,6 @@
 import {
   closestCenter,
   DndContext,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -13,7 +12,6 @@ import {
   arrayMove,
   SortableContext,
   horizontalListSortingStrategy,
-  sortableKeyboardCoordinates,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -33,8 +31,14 @@ type FilmstripProps = {
 export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  const moveImage = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= images.length || to >= images.length) {
+      return;
+    }
+    onReorder(arrayMove(images, from, to));
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -42,7 +46,7 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
     const from = images.findIndex((i) => i.id === active.id);
     const to = images.findIndex((i) => i.id === over.id);
     if (from === -1 || to === -1) return;
-    onReorder(arrayMove(images, from, to));
+    moveImage(from, to);
   };
 
   return (
@@ -54,6 +58,8 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
               key={img.id}
               image={img}
               index={idx}
+              imageCount={images.length}
+              onMove={moveImage}
               onRemove={() => onRemove(img.id)}
             />
           ))}
@@ -66,10 +72,18 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
 type FilmstripItemProps = {
   image: StagedImage;
   index: number;
+  imageCount: number;
+  onMove: (from: number, to: number) => void;
   onRemove: () => void;
 };
 
-function FilmstripItem({ image, index, onRemove }: FilmstripItemProps) {
+function FilmstripItem({
+  image,
+  index,
+  imageCount,
+  onMove,
+  onRemove,
+}: FilmstripItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: image.id,
   });
@@ -77,6 +91,16 @@ function FilmstripItem({ image, index, onRemove }: FilmstripItemProps) {
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const previous = event.key === "ArrowLeft" || event.key === "ArrowUp";
+    const next = event.key === "ArrowRight" || event.key === "ArrowDown";
+    if (!previous && !next) return;
+
+    event.preventDefault();
+    const target = previous ? Math.max(0, index - 1) : Math.min(imageCount - 1, index + 1);
+    onMove(index, target);
   };
 
   return (
@@ -89,43 +113,52 @@ function FilmstripItem({ image, index, onRemove }: FilmstripItemProps) {
         isDragging && "z-10 opacity-80 shadow-lg",
       )}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-muted-foreground">#{index + 1}</span>
+      <div className="flex items-center justify-between px-1">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+          #{index + 1}
+        </span>
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+          className="size-7 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
           onClick={onRemove}
           aria-label={`Remove ${image.file.name}`}
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="size-3.5" />
         </Button>
       </div>
 
-      {image.previewUrl ? (
-        <Thumbnail src={image.previewUrl} alt={image.file.name} />
-      ) : (
-        <div className="flex h-[120px] w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
-          Preview unavailable
-        </div>
-      )}
+      <div className="relative group/thumb overflow-hidden rounded-xl bg-muted ring-1 ring-border/40 transition-all group-hover:ring-primary/30">
+        {image.previewUrl ? (
+          <Thumbnail src={image.previewUrl} alt={image.file.name} />
+        ) : (
+          <div className="flex h-[120px] w-full items-center justify-center text-xs text-muted-foreground font-medium">
+            Preview unavailable
+          </div>
+        )}
+        <div className="absolute inset-0 bg-primary/5 opacity-0 transition-opacity group-hover/thumb:opacity-100" />
+      </div>
 
       <button
         type="button"
         {...attributes}
         {...listeners}
+        onKeyDown={handleKeyDown}
         className={cn(
-          "cursor-grab rounded-md text-left text-xs leading-tight",
+          "cursor-grab rounded-lg p-1 text-left transition-all",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
           "active:cursor-grabbing",
         )}
-        aria-label={`Reorder ${image.file.name}. Press space to pick up, arrow keys to move, space to drop.`}
+        aria-label={`Reorder ${image.file.name}. Use arrow keys to move this screenshot.`}
       >
-        <span className="block truncate font-medium text-foreground" title={image.file.name}>
+        <span
+          className="block truncate text-[11px] font-bold tracking-tight text-foreground/90"
+          title={image.file.name}
+        >
           {image.file.name}
         </span>
-        <span className="block truncate text-muted-foreground">
+        <span className="mt-0.5 block truncate text-[10px] font-medium text-muted-foreground/80">
           {formatDetected(image)}
         </span>
       </button>
@@ -139,8 +172,8 @@ function formatDetected(img: StagedImage): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
   const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(
     d.getHours(),
-  )}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  return `${stamp} · ${labelFor(img.timestampSource)}`;
+  )}:${pad(d.getMinutes())}`;
+  return `${stamp} via ${labelFor(img.timestampSource)}`;
 }
 
 function labelFor(source: TimestampSource): string {

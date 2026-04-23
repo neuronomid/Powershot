@@ -6,7 +6,7 @@ See [`docs/PRD.md`](./docs/PRD.md) for the product spec and [`docs/Plan.md`](./d
 
 ## Current status
 
-**Phase 0 — Foundation.** Next.js skeleton, design tokens, route shell. No upload, AI, or export logic yet.
+**Phase 1 — Upload & ordering is in progress.** `/new` supports drag/drop, paste, bulk upload, validation, auto-ordering, thumbnails, and filmstrip reorder. Generate is still stubbed; AI, export, and persistence land in later phases.
 
 ## Prerequisites
 
@@ -31,13 +31,16 @@ App runs at http://localhost:3000.
 | `pnpm build`   | production build                              |
 | `pnpm start`   | run the production build locally              |
 | `pnpm lint`    | ESLint across the project                     |
+| `pnpm test`    | Vitest unit/component tests                   |
+| `pnpm test:e2e` | Playwright browser tests                     |
+| `pnpm test:all` | Vitest followed by Playwright                |
 
 ## Routes
 
 | path           | status  | purpose                                |
 | -------------- | ------- | -------------------------------------- |
 | `/`            | stub    | home, recent-notes list (Phase 6)      |
-| `/new`         | stub    | upload + order + generate (Phases 1–3) |
+| `/new`         | active  | upload + ordering UI (Phase 1); generate is stubbed |
 | `/note/[id]`   | stub    | split-pane preview + export (Phase 4–5) |
 | `/privacy`     | stub    | full copy lands in Phase 7             |
 

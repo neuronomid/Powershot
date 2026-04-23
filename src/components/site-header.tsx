@@ -1,24 +1,44 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-40">
-      <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-6">
+    <header className="sticky top-0 z-50 w-full bg-transparent border-none shadow-none transition-colors duration-300">
+      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-6 border-none">
         <Link
           href="/"
-          className="font-heading text-base font-semibold tracking-tight"
+          className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
         >
-          Powershot
+          <div className="relative size-8 overflow-hidden rounded-lg shadow-sm ring-1 ring-border/20">
+            <Image
+              src="/Logos/Logo5.png"
+              alt="Powershot Logo"
+              fill
+              className="object-cover dark:hidden"
+              priority
+            />
+            <Image
+              src="/Logos/Logo5-dark.png"
+              alt="Powershot Logo"
+              fill
+              className="hidden object-cover dark:block"
+              priority
+            />
+          </div>
+          <span className="font-heading text-lg font-bold tracking-tight text-foreground/90">
+            Powershot
+          </span>
         </Link>
-        <nav className="flex items-center gap-2 text-sm">
+        <nav className="flex items-center gap-6">
           <Link
             href="/new"
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
             New note
           </Link>
+          <div className="h-4 w-px bg-border/60" />
           <ThemeToggle />
         </nav>
       </div>
