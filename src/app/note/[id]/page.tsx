@@ -19,7 +19,7 @@ import { ImagePane } from "@/components/preview/image-pane";
 import { ThemePanel } from "@/components/preview/theme-panel";
 import { useSyncScroll } from "@/components/preview/use-sync-scroll";
 import { Button } from "@/components/ui/button";
-import { getNote, updateNote, deleteNote, appendToNote } from "@/lib/note/store";
+import { getNote, updateNote, deleteNote, appendToNote, QuotaExceededError } from "@/lib/note/store";
 import { loadTheme } from "@/lib/theme/storage";
 import { runBatchPipeline } from "@/lib/pipeline/batch";
 import type { ExportTheme } from "@/lib/theme/types";
@@ -43,6 +43,7 @@ export default function NotePage() {
   const [theme, setTheme] = useState<ExportTheme>(() => loadTheme());
   const [continuing, setContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
+  const [quotaError, setQuotaError] = useState(false);
   const imagePaneRef = useRef<HTMLDivElement>(null);
   const editorPaneRef = useRef<HTMLDivElement>(null);
 
