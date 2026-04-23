@@ -136,7 +136,7 @@ The original plan had a Phase 13 that bundled onboarding with a Service Worker. 
 - **Markdown download** (PRD2 §3.12): "Download Markdown" button in the theme panel. Generates a `.md` file with the note title as filename. Raw Markdown content only.
 - **Table of contents** (PRD2 §3.13): Auto-generated TOC for notes with ≥ 3 headings. PDF: TOC section at the top with heading text as clickable internal `#anchor` links (no page numbers in v2 — page numbers need a two-pass Puppeteer render that's fragile on serverless; deferred to v2.1). DOCX: Word-native TOC field (`TOC \o "1-3" \h \z \u`). Markdown: skip (MD tooling has its own conventions). Only `#` through `###` included. Toggle in theme panel: "Include table of contents" (default on for qualifying notes, persisted).
 - **Custom page sizes and margins** (PRD2 §3.14): Page size selector (US Letter, A4, A5) and margins (Narrow 15mm, Standard 25mm, Wide 35mm) in the theme panel. Applied to PDF (`page.pdf()` options) and DOCX (page dimensions in `docx` library). Persisted in `localStorage` as part of theme preferences.
-- **"Made with Powershot" opt-in footer** (PRD2 §3.15): Toggle in theme panel: "Add 'Made with Powershot' footer" (default off). When on, appends a small 8pt footer to PDF, DOCX, and Markdown exports. Text: "— Made with Powershot | powershot.app". Persisted as part of theme preferences.
+- **"Made with Powershot" opt-in footer** (PRD2 §3.15): Toggle in theme panel: "Add 'Made with Powershot' footer" (default off). When on, appends a small 8pt footer to PDF, DOCX, and Markdown exports.   Text: "— Made with Powershot | powershot.org". Persisted as part of theme preferences.
 
 **Scope (out):** browser extension; onboarding; pipeline changes.
 

@@ -186,7 +186,7 @@ export async function extractMarkdownFromImage(
           headers: {
             Authorization: `Bearer ${apiKey}`,
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://powershot.app",
+            "HTTP-Referer": "https://powershot.org",
             "X-Title": "Powershot",
           },
           body: JSON.stringify(body),
@@ -273,7 +273,7 @@ export async function callDedup(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://powershot.app",
+      "HTTP-Referer": "https://powershot.org",
       "X-Title": "Powershot",
     },
     body: JSON.stringify(body),
@@ -348,7 +348,7 @@ export async function callReview(
     headers: {
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": "https://powershot.app",
+      "HTTP-Referer": "https://powershot.org",
       "X-Title": "Powershot",
     },
     body: JSON.stringify(body),

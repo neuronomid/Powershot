@@ -4,7 +4,7 @@
   "short_name": "Powershot",
   "description": "Capture the visible tab or a selected region directly into Powershot.",
   "version": "0.1.0",
-  "homepage_url": "https://powershot.app",
+  "homepage_url": "https://powershot.org",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Capture to Powershot"
@@ -15,15 +15,15 @@
   },
   "permissions": ["activeTab", "scripting"],
   "host_permissions": [
-    "https://powershot.app/*",
-    "https://*.powershot.app/*",
+    "https://powershot.org/*",
+    "https://*.powershot.org/*",
     "http://localhost:3000/*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://powershot.app/new*",
-        "https://*.powershot.app/new*",
+        "https://powershot.org/new*",
+        "https://*.powershot.org/new*",
         "http://localhost:3000/new*"
       ],
       "js": ["assets/app-bridge.js"],
