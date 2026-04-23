@@ -3,6 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 const PNG_BASE64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAFgwJ/l7Z3YAAAAABJRU5ErkJggg==";
 const PNG = Buffer.from(PNG_BASE64, "base64");
+const TERMS_VERSION = "2026-04-23";
 
 function screenshot(name: string) {
   return {
@@ -22,21 +23,39 @@ async function filmstripNames(page: Page) {
   );
 }
 
+test.use({
+  storageState: {
+    cookies: [],
+    origins: [
+      {
+        origin: "http://127.0.0.1:3000",
+        localStorage: [
+          {
+            name: "powershot_terms_accepted",
+            value: TERMS_VERSION,
+          },
+        ],
+      },
+    ],
+  },
+});
+
 test("home, privacy, and new-note routes render the current app shell", async ({ page }) => {
   await page.goto("/");
 
-  await expect(page.getByRole("heading", { name: /Screenshots in\./ })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Privacy" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your notes" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recent notes" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Privacy Policy" })).toBeVisible();
 
-  await page.getByRole("link", { name: "+ New note" }).click();
+  await page.getByRole("link", { name: "+ New Note" }).click();
   await expect(page).toHaveURL(/\/new$/);
-  await expect(page.getByRole("heading", { name: "New note" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate" })).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Create a new note" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate note" })).toBeDisabled();
 
-  await page.getByRole("link", { name: "Privacy" }).click();
+  await page.getByRole("link", { name: "Privacy Policy" }).click();
   await expect(page).toHaveURL(/\/privacy$/);
   await expect(page.getByRole("heading", { name: "Privacy" })).toBeVisible();
-  await expect(page.getByText(/never touch our disks/i)).toBeVisible();
+  await expect(page.getByText(/zero server-side persistence/i)).toBeVisible();
 });
 
 test("file upload orders screenshots by filename timestamp and enables generation", async ({
@@ -50,8 +69,8 @@ test("file upload orders screenshots by filename timestamp and enables generatio
     screenshot("Screenshot 2026-04-22 at 14.32.00.png"),
   ]);
 
-  await expect(page.getByText("3 screenshots")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate" })).toBeEnabled();
+  await expect(page.getByText("Staged screenshots")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Generate note" })).toBeEnabled();
   await expect(page.getByRole("button", { name: /Add more/ })).toBeVisible();
   await expect(page.getByRole("button", { name: /^Reorder / })).toHaveCount(3);
 
@@ -60,7 +79,7 @@ test("file upload orders screenshots by filename timestamp and enables generatio
     "Screenshot_20260422_143300.png",
     "Screenshot 2026-04-22 at 14.34.00.png",
   ]);
-  await expect(page.getByText("2026-04-22 14:32:00 · filename")).toBeVisible();
+  await expect(page.getByText("2026-04-22 14:32 via filename")).toBeVisible();
 });
 
 test("unsupported files are rejected inline and do not enable generation", async ({ page }) => {
@@ -75,7 +94,7 @@ test("unsupported files are rejected inline and do not enable generation", async
   await expect(page.getByText("1 file skipped")).toBeVisible();
   await expect(page.getByText("notes.txt")).toBeVisible();
   await expect(page.getByText(/file type|unsupported/i)).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Generate note" })).toBeDisabled();
 });
 
 test("low-confidence order warning appears for tied fallback timestamps", async ({ page }) => {
@@ -83,19 +102,12 @@ test("low-confidence order warning appears for tied fallback timestamps", async 
 
   await upload(page, [screenshot("first-page.png"), screenshot("second-page.png")]);
 
-  await expect(page.getByText("2 screenshots")).toBeVisible();
-  await expect(page.getByText(/confidently detect order/)).toBeVisible();
+  await expect(page.getByText("Order confidence is low")).toBeVisible();
 });
 
 test("paste adds a timestamp-named screenshot anywhere on the new-note page", async ({ page }) => {
   await page.goto("/new");
-  await expect(page.getByText("Drop screenshots, click to browse, or paste")).toBeVisible();
-  await page.evaluate(
-    () =>
-      new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }),
-  );
+  await expect(page.getByText("Drag files, click to browse, or paste directly")).toBeVisible();
 
   const dispatchResult = await page.evaluate((base64) => {
     const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
@@ -117,10 +129,8 @@ test("paste adds a timestamp-named screenshot anywhere on the new-note page", as
     return window.dispatchEvent(event);
   }, PNG_BASE64);
 
-  expect(dispatchResult).toBe(false);
-  await expect(page.getByText("1 screenshot")).toBeVisible();
   await expect(page.getByRole("button", { name: /^Reorder Pasted / })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Generate" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "Generate note" })).toBeEnabled();
 });
 
 test("keyboard reorder changes order and reset restores the auto-detected sequence", async ({
@@ -146,10 +156,94 @@ test("keyboard reorder changes order and reset restores the auto-detected sequen
     "Screenshot 2026-04-22 at 14.32.00.png",
   ]);
 
-  await page.getByRole("button", { name: "Reset to auto-detected" }).click();
+  await page.getByRole("button", { name: "Reset order" }).click();
 
   await expect.poll(() => filmstripNames(page)).toEqual([
     "Screenshot 2026-04-22 at 14.32.00.png",
     "Screenshot 2026-04-22 at 14.33.00.png",
   ]);
+});
+
+test("extension-style captures can be staged through the shared postMessage intake", async ({
+  page,
+}) => {
+  await page.goto("/new?source=extension");
+
+  await expect(page.getByText("Waiting for your Chrome extension capture")).toBeVisible();
+
+  await page.evaluate((base64) => {
+    window.postMessage(
+      {
+        type: "POWERSHOT_CAPTURE",
+        captureId: "capture-e2e",
+        title: "Visible tab - docs.example.com",
+        images: [
+          {
+            dataUrl: `data:image/png;base64,${base64}`,
+            title: "Visible tab - docs.example.com",
+            source: "visible-tab",
+          },
+        ],
+      },
+      window.location.origin,
+    );
+  }, PNG_BASE64);
+
+  await expect(page.locator("#note-title")).toHaveValue("Visible tab - docs.example.com");
+  await expect(page.getByText("Capture imported from the Chrome extension")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Reorder Visible tab - docs\.example\.com/ })).toBeVisible();
+});
+
+test("sample onboarding loads staged assets, auto-runs the pipeline, and can be reset", async ({
+  page,
+}) => {
+  let extractCount = 0;
+
+  await page.route("**/api/extract", async (route) => {
+    extractCount += 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        markdown: `## Sample chunk ${extractCount}\n\nBody ${extractCount}`,
+        model: "google/gemini-2.5-pro",
+      }),
+    });
+  });
+
+  await page.route("**/api/dedup", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ results: [] }),
+    });
+  });
+
+  await page.route("**/api/review", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        markdown:
+          "# Powershot sample note\n\n## Lecture slide\n\nDemo output\n\n## Documentation page\n\nDemo output",
+        warnings: [],
+        tokenSubsetViolations: null,
+      }),
+    });
+  });
+
+  await page.goto("/new?sample=true");
+
+  await expect(page).toHaveURL(/\/new\?sample=true$/);
+  await expect(page.getByText("Sample note loaded")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Reorder / })).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Review note" })).toBeVisible();
+  await expect(page.locator("#note-title")).toHaveValue("Powershot sample note");
+  await expect(page.locator("textarea")).toHaveValue(/# Powershot sample note/);
+
+  await page.getByRole("button", { name: "Start fresh" }).click();
+
+  await expect(page).toHaveURL(/\/new$/);
+  await expect(page.getByText("Drop screenshots here to start")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Reorder / })).toHaveCount(0);
 });

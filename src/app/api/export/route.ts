@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
-import puppeteer from "puppeteer-core";
+import puppeteer, { type PaperFormat } from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -14,8 +14,17 @@ import { markdownToHtml } from "@/lib/export/markdown-to-html";
 import { buildThemedHtml } from "@/lib/export/themed-html";
 import { markdownToDocxBuffer } from "@/lib/export/md-to-docx";
 import type { ExportTheme } from "@/lib/theme/types";
+import { PAGE_SIZE_PDF_FORMAT } from "@/lib/theme/types";
+import { MARGIN_MM } from "@/lib/theme/types";
+import { FOOTER_MARKDOWN } from "@/lib/theme/constants";
+import {
+  checkRateLimit,
+  checkRequestSize,
+  createRateLimitResponse,
+  createSizeLimitResponse,
+} from "@/lib/rate-limit";
 
-const ALLOWED_FORMATS = ["pdf", "docx"] as const;
+const ALLOWED_FORMATS = ["pdf", "docx", "md"] as const;
 type ExportFormat = (typeof ALLOWED_FORMATS)[number];
 
 function isValidFormat(v: unknown): v is ExportFormat {
@@ -29,7 +38,7 @@ async function generatePdf(params: {
 }): Promise<Buffer> {
   const { markdown, title, theme } = params;
   const bodyHtml = await markdownToHtml(markdown);
-  const html = buildThemedHtml({ title, bodyHtml, theme });
+  const html = buildThemedHtml({ title, bodyHtml, markdown, theme });
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const headless = isDevelopment ? true : ("shell" as const);
@@ -54,9 +63,14 @@ async function generatePdf(params: {
       new Promise((resolve) => setTimeout(resolve, 3_000)),
     ]);
     const pdfBuffer = await page.pdf({
-      format: "Letter",
+      format: PAGE_SIZE_PDF_FORMAT[theme.pageSize] as PaperFormat,
       printBackground: true,
-      margin: { top: "1in", right: "0.85in", bottom: "1in", left: "0.85in" },
+      margin: {
+        top: `${MARGIN_MM[theme.margins]}mm`,
+        right: `${MARGIN_MM[theme.margins]}mm`,
+        bottom: `${MARGIN_MM[theme.margins]}mm`,
+        left: `${MARGIN_MM[theme.margins]}mm`,
+      },
     });
     return Buffer.from(pdfBuffer);
   } finally {
@@ -90,12 +104,22 @@ async function resolveChromiumExecutablePath(
 }
 
 export async function POST(request: NextRequest) {
+  const sizeCheck = checkRequestSize(request);
+  if (!sizeCheck.valid) {
+    return createSizeLimitResponse(sizeCheck.size!);
+  }
+
+  const rateLimit = await checkRateLimit(request, "export");
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(rateLimit.retryAfterSeconds!);
+  }
+
   const { searchParams } = new URL(request.url);
   const formatParam = searchParams.get("format");
 
   if (!isValidFormat(formatParam)) {
     return NextResponse.json(
-      { error: "Invalid or missing format. Use ?format=pdf or ?format=docx" },
+      { error: "Invalid or missing format. Use ?format=pdf, ?format=docx, or ?format=md" },
       { status: 400 },
     );
   }
@@ -132,6 +156,10 @@ export async function POST(request: NextRequest) {
     headingFont: (theme as ExportTheme)?.headingFont ?? "Inter",
     baseSize: (theme as ExportTheme)?.baseSize ?? "medium",
     lineSpacing: (theme as ExportTheme)?.lineSpacing ?? "1.5",
+    pageSize: (theme as ExportTheme)?.pageSize ?? "us-letter",
+    margins: (theme as ExportTheme)?.margins ?? "standard",
+    includeToc: (theme as ExportTheme)?.includeToc ?? true,
+    includeFooter: (theme as ExportTheme)?.includeFooter ?? false,
   };
 
   try {
@@ -156,6 +184,22 @@ export async function POST(request: NextRequest) {
           { status: 500 },
         );
       }
+    }
+
+    if (formatParam === "md") {
+      let content = markdown;
+      if (sanitizedTheme.includeFooter) {
+        content = content.trimEnd() + "\n\n" + FOOTER_MARKDOWN + "\n";
+      }
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(content);
+      return new NextResponse(bytes, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/markdown; charset=utf-8",
+          "Content-Disposition": `attachment; filename="${sanitizeFilename(title)}.md"`,
+        },
+      });
     }
 
     // format === "docx"

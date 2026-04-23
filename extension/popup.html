@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Powershot</title>
+    <script type="module" src="/src/popup.ts"></script>
+  </head>
+  <body>
+    <main class="popup-shell">
+      <section class="popup-card">
+        <p class="eyebrow">Chrome extension</p>
+        <h1>Capture directly into Powershot</h1>
+        <p class="subhead">
+          Send the full visible tab or a cropped region into the Powershot web
+          app without saving screenshots first.
+        </p>
+
+        <div class="actions">
+          <button id="capture-visible" class="primary" type="button">
+            Visible tab
+          </button>
+          <button id="capture-region" class="secondary" type="button">
+            Select region
+          </button>
+        </div>
+
+        <a
+          id="open-app"
+          class="link"
+          href="https://powershot.app/new"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Open Powershot
+        </a>
+
+        <p id="status" class="status" aria-live="polite"></p>
+      </section>
+    </main>
+  </body>
+</html>

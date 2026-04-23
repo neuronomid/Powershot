@@ -20,13 +20,19 @@ import { ThemePanel } from "@/components/preview/theme-panel";
 import { useSyncScroll } from "@/components/preview/use-sync-scroll";
 import { Button } from "@/components/ui/button";
 import { getNote, updateNote, deleteNote, appendToNote, QuotaExceededError } from "@/lib/note/store";
+import { replaceChunkInNote } from "@/lib/note/chunk-utils";
 import { loadTheme } from "@/lib/theme/storage";
 import { runBatchPipeline } from "@/lib/pipeline/batch";
 import type { ExportTheme } from "@/lib/theme/types";
 import type { Note } from "@/lib/note/types";
+import type { ChunkMeta } from "@/lib/pipeline/types";
 import { nanoid } from "nanoid";
-import { isAcceptedImage } from "@/lib/upload/validation";
+import { isAcceptedImage, MAX_IMAGES_PER_NOTE } from "@/lib/upload/validation";
 import type { StagedImage } from "@/lib/upload/types";
+import { ReviewChangeSummaryPanel } from "@/components/pipeline/review-change-summary";
+import { FallbackBanner } from "@/components/pipeline/fallback-banner";
+import { computeReviewChanges } from "@/lib/pipeline/review-diff";
+import { MODEL_CHAIN } from "@/lib/ai/openrouter";
 
 
 export default function NotePage() {
@@ -40,10 +46,17 @@ export default function NotePage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [editorFocused, setEditorFocused] = useState(false);
+  const [reviewChangesDismissed, setReviewChangesDismissed] = useState(false);
+  const [fallbackDismissed, setFallbackDismissed] = useState(false);
   const [theme, setTheme] = useState<ExportTheme>(() => loadTheme());
   const [continuing, setContinuing] = useState(false);
   const [continueError, setContinueError] = useState<string | null>(null);
   const [quotaError, setQuotaError] = useState(false);
+  const [continueReviewChanges, setContinueReviewChanges] = useState<
+    | { summary: ReturnType<typeof computeReviewChanges>; dismissed: boolean }
+    | null
+  >(null);
+  const [reextractingId, setReextractingId] = useState<string | null>(null);
   const imagePaneRef = useRef<HTMLDivElement>(null);
   const editorPaneRef = useRef<HTMLDivElement>(null);
 
@@ -113,10 +126,22 @@ export default function NotePage() {
       if (!note) return;
       setContinueError(null);
       setContinuing(true);
+      setContinueReviewChanges(null);
+
+      const existingCount = note.images.length;
+      const remainingSlots = Math.max(0, MAX_IMAGES_PER_NOTE - existingCount);
+
+      if (remainingSlots === 0) {
+        setContinuing(false);
+        setContinueError(`Maximum ${MAX_IMAGES_PER_NOTE} images per note.`);
+        return;
+      }
 
       const fresh: StagedImage[] = [];
+      let addedCount = 0;
       for (const file of files) {
         if (!isAcceptedImage(file)) continue;
+        if (addedCount >= remainingSlots) break;
         const objectUrl = URL.createObjectURL(file);
         fresh.push({
           id: nanoid(),
@@ -125,7 +150,11 @@ export default function NotePage() {
           previewUrl: objectUrl,
           detectedAt: null,
           timestampSource: "insertion",
+          source: "screenshot",
+          enhanced: false,
+          croppedRegion: null,
         });
+        addedCount++;
       }
 
       if (fresh.length === 0) {
@@ -136,12 +165,26 @@ export default function NotePage() {
 
       try {
         const result = await runBatchPipeline(fresh);
+        const preReview = result.preReviewMarkdown ?? "";
+        const postReview = result.markdown;
+        const changes = computeReviewChanges(preReview, postReview);
+        setContinueReviewChanges({ summary: changes, dismissed: false });
+
+        const newChunks: ChunkMeta[] = fresh.map((img, i) => ({
+          imageIndex: existingCount + i,
+          model: "",
+          croppedRegion: null,
+          enhanced: false,
+          source: img.source ?? "screenshot",
+        }));
+
         const updated = await appendToNote(id, {
           markdown: result.markdown,
           extractedMarkdown: result.markdown,
           anchors: result.anchors,
           warnings: result.warnings,
           tokenSubsetViolations: result.tokenSubsetViolations,
+          chunks: newChunks,
         });
         if (updated) {
           setNote(updated);
@@ -158,10 +201,58 @@ export default function NotePage() {
         }
       } finally {
         setContinuing(false);
-        // Clean up object URLs for the temporary staged images.
         for (const img of fresh) {
           URL.revokeObjectURL(img.objectUrl);
         }
+      }
+    },
+    [note, id],
+  );
+
+  const handleReextract = useCallback(
+    async (imageId: string, promptType: "code" | "math") => {
+      if (!note) return;
+      const img = note.images.find((i) => i.id === imageId);
+      if (!img) return;
+
+      setReextractingId(imageId);
+      try {
+        const { processImageForExtraction } = await import("@/lib/upload/process-image");
+        const dataUrl = await processImageForExtraction(img);
+        const res = await fetch("/api/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: dataUrl, promptType }),
+        });
+
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+
+        const data = (await res.json()) as { markdown: string; model: string };
+
+        const updatedNote = replaceChunkInNote(note, imageId, data.markdown);
+        if (updatedNote) {
+          // Update chunk model
+          const imgIndex = note.images.findIndex((i) => i.id === imageId);
+          const newChunks = updatedNote.chunks.map((c) =>
+            c.imageIndex === imgIndex ? { ...c, model: data.model } : c,
+          );
+          const finalNote = { ...updatedNote, chunks: newChunks };
+          await updateNote(id, {
+            markdown: finalNote.markdown,
+            extractedMarkdown: finalNote.extractedMarkdown,
+            anchors: finalNote.anchors,
+            chunks: finalNote.chunks,
+          });
+          setNote(finalNote);
+          setMarkdown(finalNote.markdown);
+        }
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Re-extraction failed");
+      } finally {
+        setReextractingId(null);
       }
     },
     [note, id],
@@ -183,6 +274,16 @@ export default function NotePage() {
   }
 
   const hasImages = note.images.length > 0;
+  const fallbackModels = note.chunks
+    .filter((c) => c.model && c.model !== MODEL_CHAIN[0])
+    .map((c) => c.model);
+  const uniqueFallbackModels = [...new Set(fallbackModels)];
+
+  const initialReviewChanges = (() => {
+    if (!note.extractedMarkdown || !note.markdown) return null;
+    if (note.extractedMarkdown === note.markdown) return null;
+    return computeReviewChanges(note.extractedMarkdown, note.markdown);
+  })();
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] max-w-7xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-6">
@@ -272,7 +373,7 @@ export default function NotePage() {
       <div className="flex items-center gap-3">
         <input
           type="file"
-          accept="image/png,image/jpeg,image/webp,image/heic"
+          accept="image/png,image/jpeg,image/webp,image/heic,application/pdf"
           multiple
           id="continue-upload"
           className="hidden"
@@ -323,6 +424,37 @@ export default function NotePage() {
         </div>
       )}
 
+      {/* Fallback model banner */}
+      {uniqueFallbackModels.length > 0 && !fallbackDismissed && (
+        <FallbackBanner
+          modelNames={uniqueFallbackModels.map((m) => {
+            const map: Record<string, string> = {
+              "google/gemini-2.5-pro": "Gemini 2.5 Pro",
+              "google/gemini-2.5-flash": "Gemini 2.5 Flash",
+              "anthropic/claude-haiku-4-5": "Claude Haiku 4.5",
+            };
+            return map[m] ?? m;
+          })}
+          onDismiss={() => setFallbackDismissed(true)}
+        />
+      )}
+
+      {/* Review-change summary (for continuing) */}
+      {continueReviewChanges && !continueReviewChanges.dismissed && continueReviewChanges.summary.hasChanges && (
+        <ReviewChangeSummaryPanel
+          summary={continueReviewChanges.summary}
+          onDismiss={() => setContinueReviewChanges((prev) => prev ? { ...prev, dismissed: true } : null)}
+        />
+      )}
+
+      {/* Initial review-change summary (from note creation) */}
+      {initialReviewChanges && initialReviewChanges.hasChanges && !reviewChangesDismissed && (
+        <ReviewChangeSummaryPanel
+          summary={initialReviewChanges}
+          onDismiss={() => setReviewChangesDismissed(true)}
+        />
+      )}
+
       {/* Split pane */}
       <div className="flex flex-col lg:flex-row flex-1 gap-4 overflow-hidden min-h-0">
         {hasImages ? (
@@ -331,6 +463,9 @@ export default function NotePage() {
             images={note.images}
             warnings={note.warnings}
             activeIndex={activeIndex}
+            chunks={note.chunks}
+            onReextract={handleReextract}
+            reextractingId={reextractingId}
           />
         ) : (
           <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border/60 bg-muted/20 text-center p-8">

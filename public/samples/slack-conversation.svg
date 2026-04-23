@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-label="Sample Slack conversation">
+  <rect width="1440" height="1080" fill="#f7f3fb" />
+  <rect x="0" y="0" width="310" height="1080" fill="#3f0f40" />
+  <text x="42" y="88" fill="#ffffff" font-family="Arial, sans-serif" font-size="34" font-weight="700"># launch-notes</text>
+  <g fill="#d9cbe2" font-family="Arial, sans-serif" font-size="24">
+    <text x="42" y="164">draft-copy</text>
+    <text x="42" y="208">design-reviews</text>
+    <text x="42" y="252">support-escalations</text>
+    <text x="42" y="296">team-radar</text>
+  </g>
+  <rect x="348" y="60" width="1040" height="960" rx="32" fill="#ffffff" stroke="#e3d8ec" stroke-width="4" />
+  <text x="410" y="132" fill="#26132b" font-family="Arial, sans-serif" font-size="46" font-weight="700">Product launch checklist</text>
+  <g font-family="Arial, sans-serif">
+    <circle cx="430" cy="235" r="24" fill="#0ea5a4" />
+    <text x="470" y="228" fill="#1f2937" font-size="28" font-weight="700">Avery</text>
+    <text x="575" y="228" fill="#7c8592" font-size="22">10:02 AM</text>
+    <text x="470" y="270" fill="#374151" font-size="28">Can we lock the landing page copy by noon?</text>
+
+    <circle cx="430" cy="370" r="24" fill="#f59e0b" />
+    <text x="470" y="363" fill="#1f2937" font-size="28" font-weight="700">Sam</text>
+    <text x="548" y="363" fill="#7c8592" font-size="22">10:05 AM</text>
+    <text x="470" y="405" fill="#374151" font-size="28">Yes. I still need the final CTA label and the pricing footnote.</text>
+
+    <circle cx="430" cy="520" r="24" fill="#6366f1" />
+    <text x="470" y="512" fill="#1f2937" font-size="28" font-weight="700">Jordan</text>
+    <text x="573" y="512" fill="#7c8592" font-size="22">10:11 AM</text>
+    <text x="470" y="554" fill="#374151" font-size="28">Support docs are ready. I will paste the final FAQ after lunch.</text>
+
+    <rect x="470" y="620" width="780" height="170" rx="22" fill="#f3f4f6" />
+    <text x="500" y="676" fill="#111827" font-size="26" font-weight="700">Thread summary</text>
+    <text x="500" y="720" fill="#374151" font-size="26">- Lock CTA label</text>
+    <text x="500" y="758" fill="#374151" font-size="26">- Add pricing footnote</text>
+    <text x="500" y="796" fill="#374151" font-size="26">- Publish FAQ after lunch</text>
+  </g>
+</svg>

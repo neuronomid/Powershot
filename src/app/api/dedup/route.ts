@@ -4,8 +4,24 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { callDedup } from "@/lib/ai/openrouter";
+import {
+  checkRateLimit,
+  checkRequestSize,
+  createRateLimitResponse,
+  createSizeLimitResponse,
+} from "@/lib/rate-limit";
 
 export async function POST(request: Request) {
+  const sizeCheck = checkRequestSize(request);
+  if (!sizeCheck.valid) {
+    return createSizeLimitResponse(sizeCheck.size!);
+  }
+
+  const rateLimit = await checkRateLimit(request, "dedup");
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(rateLimit.retryAfterSeconds!);
+  }
+
   try {
     const body = (await request.json()) as {
       pairs?: Array<{

@@ -4,15 +4,40 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { extractMarkdownFromImage } from "@/lib/ai/openrouter";
+import {
+  checkRateLimit,
+  checkRequestSize,
+  createRateLimitResponse,
+  createSizeLimitResponse,
+} from "@/lib/rate-limit";
+
+const MAX_IMAGES_PER_BATCH = 30;
 
 export async function POST(request: Request) {
+  const sizeCheck = checkRequestSize(request);
+  if (!sizeCheck.valid) {
+    return createSizeLimitResponse(sizeCheck.size!);
+  }
+
+  const rateLimit = await checkRateLimit(request, "extract");
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(rateLimit.retryAfterSeconds!);
+  }
+
   try {
-    const body = (await request.json()) as { image?: string };
-    const { image } = body;
+    const body = (await request.json()) as { image?: string; imageCount?: number; promptType?: string };
+    const { image, imageCount } = body;
 
     if (typeof image !== "string" || !image.startsWith("data:")) {
       return Response.json(
         { error: "Invalid image. Expected a base64 data URL string." },
+        { status: 400 },
+      );
+    }
+
+    if (typeof imageCount === "number" && imageCount > MAX_IMAGES_PER_BATCH) {
+      return Response.json(
+        { error: `Maximum ${MAX_IMAGES_PER_BATCH} images per note.` },
         { status: 400 },
       );
     }
@@ -27,7 +52,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { markdown, model } = await extractMarkdownFromImage(image, apiKey);
+    const { markdown, model } = await extractMarkdownFromImage(image, apiKey, body.promptType);
 
     return Response.json({ markdown, model });
   } catch (err) {

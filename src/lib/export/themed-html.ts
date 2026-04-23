@@ -5,19 +5,70 @@ import {
   FONT_CSS,
   FONT_GOOGLE_URL,
   PRESET_COLORS,
+  MARGIN_MM,
 } from "@/lib/theme/types";
+import { FOOTER_TEXT } from "@/lib/theme/constants";
+import { remark } from "remark";
+import remarkGfm from "remark-gfm";
+import GithubSlugger from "github-slugger";
+import type { Root } from "mdast";
+
+export interface TocItem {
+  text: string;
+  slug: string;
+  depth: number;
+}
+
+export function extractTocItems(markdown: string): TocItem[] {
+  const parsed = remark().use(remarkGfm).parse(markdown) as Root;
+  const slugger = new GithubSlugger();
+  const items: TocItem[] = [];
+  for (const node of parsed.children) {
+    if (node.type === "heading" && node.depth >= 1 && node.depth <= 3) {
+      const text = node.children
+        .map((c) =>
+          c.type === "text"
+            ? c.value
+            : c.type === "inlineCode"
+              ? c.value
+              : "",
+        )
+        .join("");
+      const slug = slugger.slug(text);
+      items.push({ text, slug, depth: node.depth });
+    }
+  }
+  return items;
+}
+
+function buildTocHtml(items: TocItem[], theme: ExportTheme): string {
+  const colors = PRESET_COLORS[theme.preset];
+  const basePt = BASE_SIZE_PT[theme.baseSize];
+  const h2Pt = basePt * 1.4;
+  let html = `<nav class="toc" style="margin-bottom:1.5em;page-break-inside:avoid;">`;
+  html += `<h2 class="toc-title" style="font-size:${h2Pt}pt;font-weight:600;margin-bottom:0.5em;font-family:${FONT_CSS[theme.headingFont]};color:${colors.foreground};">Table of Contents</h2>`;
+  html += '<ul class="toc-list" style="list-style:none;padding-left:0;margin:0;">';
+  for (const item of items) {
+    const indent = item.depth === 1 ? 0 : item.depth === 2 ? 1 : 2;
+    html += `<li class="toc-item" style="margin-bottom:0.35em;padding-left:${indent}em;"><a href="#${item.slug}" style="text-decoration:none;color:${colors.foreground};">${escapeHtml(item.text)}</a></li>`;
+  }
+  html += "</ul></nav>";
+  return html;
+}
 
 export function buildThemedHtml(params: {
   title: string;
   bodyHtml: string;
+  markdown: string;
   theme: ExportTheme;
 }): string {
-  const { title, bodyHtml, theme } = params;
+  const { title, bodyHtml, markdown, theme } = params;
   const colors = PRESET_COLORS[theme.preset];
   const basePt = BASE_SIZE_PT[theme.baseSize];
   const lineHeight = LINE_SPACING_VAL[theme.lineSpacing];
   const bodyFont = FONT_CSS[theme.bodyFont];
   const headingFont = FONT_CSS[theme.headingFont];
+  const marginMm = MARGIN_MM[theme.margins];
 
   const googleFontUrls = [
     FONT_GOOGLE_URL[theme.bodyFont],
@@ -36,6 +87,12 @@ export function buildThemedHtml(params: {
   const h3Pt = basePt * 1.2;
   const h4Pt = basePt * 1.1;
 
+  const tocItems = theme.includeToc ? extractTocItems(markdown) : [];
+  const tocHtml = tocItems.length >= 3 ? buildTocHtml(tocItems, theme) : "";
+  const footerHtml = theme.includeFooter
+    ? `<footer class="export-footer" style="margin-top:2em;font-size:8pt;color:${colors.foreground};opacity:0.5;text-align:right;">${escapeHtml(FOOTER_TEXT)}</footer>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -44,7 +101,7 @@ export function buildThemedHtml(params: {
   ${fontLinks}
   <style>
     @page {
-      margin: 1in 0.85in;
+      margin: ${marginMm}mm;
     }
     body {
       font-family: ${bodyFont};
@@ -106,10 +163,13 @@ export function buildThemedHtml(params: {
     th { background: ${colors.muted}; font-weight: 600; }
     img { max-width: 100%; height: auto; }
     hr { border: none; border-top: 1px solid ${colors.foreground}20; margin: 1.5em 0; }
+    .toc-item a:hover { text-decoration: underline; color: ${colors.accent}; }
   </style>
 </head>
 <body>
+  ${tocHtml}
   ${bodyHtml}
+  ${footerHtml}
 </body>
 </html>`;
 }

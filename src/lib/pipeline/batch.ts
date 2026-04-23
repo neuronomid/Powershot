@@ -1,5 +1,5 @@
 import { dedupChunkList } from "@/lib/dedup/deterministic";
-import { resizeImageToDataUrl } from "@/lib/upload/resize";
+import { processImageForExtraction } from "@/lib/upload/process-image";
 import type { StagedImage } from "@/lib/upload/types";
 import type {
   ChunkAnchor,
@@ -17,7 +17,7 @@ function buildAnchors(chunks: string[], imageIds: string[]): ChunkAnchor[] {
     const start = offset;
     const end = offset + chunk.length;
     anchors.push({ imageId, startOffset: start, endOffset: end });
-    offset = end + 2; // account for "\n\n" separator
+    offset = end + 2;
   }
   return anchors;
 }
@@ -67,17 +67,16 @@ export type PipelineCallbacks = {
   onExtractStart?: (imageId: string) => void;
   onExtractSuccess?: (imageId: string, markdown: string, model: string) => void;
   onExtractError?: (imageId: string, error: string) => void;
+  onDedupStart?: () => void;
+  onReviewStart?: (preReviewMarkdown: string) => void;
+  onReviewEnd?: () => void;
 };
 
-/**
- * Runs the full batch pipeline (extract → deterministic dedup → semantic dedup → review)
- * and returns the final result. This is a standalone async function with no React dependency.
- */
 export async function runBatchPipeline(
   images: StagedImage[],
-  options: { signal?: AbortSignal; callbacks?: PipelineCallbacks } = {},
+  options: { signal?: AbortSignal; callbacks?: PipelineCallbacks; enhance?: boolean } = {},
 ): Promise<PipelineResult & { timing?: PipelineTiming }> {
-  const { signal, callbacks } = options;
+  const { signal, callbacks, enhance } = options;
 
   const extractionResults = new Map<
     string,
@@ -92,13 +91,14 @@ export async function runBatchPipeline(
     callbacks?.onExtractStart?.(image.id);
 
     try {
-      const dataUrl = await resizeImageToDataUrl(image.file);
+      const dataUrl = await processImageForExtraction(image, { enhance });
       if (signal?.aborted) return;
 
       const res = await fetch("/api/extract", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl }),
+        signal,
+        body: JSON.stringify({ image: dataUrl, imageCount: images.length }),
       });
 
       if (signal?.aborted) return;
@@ -114,6 +114,8 @@ export async function runBatchPipeline(
       extractionResults.set(image.id, data);
       callbacks?.onExtractSuccess?.(image.id, data.markdown, data.model);
     } catch (err) {
+      if (signal?.aborted) return;
+      if (err instanceof DOMException && err.name === "AbortError") return;
       failedImages.add(image.id);
       const message = err instanceof Error ? err.message : "Unknown error";
       callbacks?.onExtractError?.(image.id, message);
@@ -121,16 +123,23 @@ export async function runBatchPipeline(
   });
   const extractionMs = Math.round(performance.now() - tExtract0);
 
+  if (signal?.aborted) {
+    throw new Error("Aborted");
+  }
+
   const successfulImages = images.filter((img) => !failedImages.has(img.id));
 
   if (successfulImages.length === 0) {
     throw new Error("All extractions failed. Please retry.");
   }
 
-  const chunks = successfulImages.map((img) => extractionResults.get(img.id)!.markdown);
+  const chunks = successfulImages.map(
+    (img) => extractionResults.get(img.id)!.markdown,
+  );
   const imageIds = successfulImages.map((img) => img.id);
 
   // ─── Phase 2: Deterministic dedup ───
+  callbacks?.onDedupStart?.();
   const tDedup0 = performance.now();
   const dedupedChunks = dedupChunkList(chunks);
   let anchors = buildAnchors(dedupedChunks, imageIds);
@@ -163,6 +172,7 @@ export async function runBatchPipeline(
       const res = await fetch("/api/dedup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal,
         body: JSON.stringify({ pairs }),
       });
 
@@ -175,14 +185,15 @@ export async function runBatchPipeline(
         };
 
         for (const result of data.results ?? []) {
-          const chunkIdx = result.index + 1; // chunkB is at index+1
+          const chunkIdx = result.index + 1;
           const spans = [...result.deletionSpans].sort(
             (a, b) => b.start - a.start,
           );
           let totalRemoved = 0;
           for (const span of spans) {
             const before = dedupedChunks[chunkIdx]!;
-            const after = before.slice(0, span.start) + before.slice(span.end);
+            const after =
+              before.slice(0, span.start) + before.slice(span.end);
             totalRemoved += before.length - after.length;
             dedupedChunks[chunkIdx] = after;
           }
@@ -196,6 +207,9 @@ export async function runBatchPipeline(
         }
       }
     } catch (err) {
+      if (signal?.aborted || (err instanceof DOMException && err.name === "AbortError")) {
+        throw new Error("Aborted");
+      }
       console.error("[pipeline] Semantic dedup failed:", err);
     }
   }
@@ -206,9 +220,10 @@ export async function runBatchPipeline(
   }
 
   // ─── Phase 4: Review ───
-  const tReview0 = performance.now();
   const combinedMarkdown = dedupedChunks.join("\n\n");
+  callbacks?.onReviewStart?.(combinedMarkdown);
 
+  const tReview0 = performance.now();
   let finalMarkdown = combinedMarkdown;
   let warnings: OrderingWarning[] = [];
   let tokenSubsetViolations: string[] | null = null;
@@ -217,6 +232,7 @@ export async function runBatchPipeline(
     const res = await fetch("/api/review", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal,
       body: JSON.stringify({ markdown: combinedMarkdown }),
     });
 
@@ -233,15 +249,20 @@ export async function runBatchPipeline(
       console.error("[pipeline] Review HTTP error:", res.status);
     }
   } catch (err) {
+    if (signal?.aborted || (err instanceof DOMException && err.name === "AbortError")) {
+      throw new Error("Aborted");
+    }
     console.error("[pipeline] Review failed:", err);
   }
   const reviewMs = Math.round(performance.now() - tReview0);
+  callbacks?.onReviewEnd?.();
 
   return {
     markdown: finalMarkdown,
     warnings,
     tokenSubsetViolations,
     anchors,
+    preReviewMarkdown: combinedMarkdown,
     timing: {
       extractionMs,
       dedupMs,

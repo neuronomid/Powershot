@@ -8,15 +8,19 @@ import {
   Info,
   Sparkles,
   Upload,
+  Wand2,
+  Puzzle,
+  RotateCcw,
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
 import { TermsAcceptance, useTermsAccepted } from "@/components/terms-acceptance";
 import { Filmstrip } from "@/components/upload/filmstrip";
 import { UploadSurface } from "@/components/upload/upload-surface";
+import { CropOverlay } from "@/components/upload/crop-overlay";
 import { ProgressPanel } from "@/components/pipeline/progress-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -28,23 +32,51 @@ import type {
   RejectedFile,
   StagedImage,
 } from "@/lib/upload/types";
-import { isAcceptedImage, rejectionReason } from "@/lib/upload/validation";
+import { isAcceptedImage, isPdfFile, rejectionReason, MAX_IMAGES_PER_NOTE } from "@/lib/upload/validation";
+import { loadEnhancePreference, saveEnhancePreference } from "@/lib/upload/enhance-storage";
 import { DebugPanel, useDebugPanel } from "@/components/debug-panel";
+import { ReviewChangeSummaryPanel } from "@/components/pipeline/review-change-summary";
+import { FallbackBanner } from "@/components/pipeline/fallback-banner";
+import type { ChunkMeta } from "@/lib/pipeline/types";
+import { captureMessageToFiles } from "@/lib/intake/files";
+import {
+  isPowershotCaptureMessage,
+  postPowershotCapture,
+  postPowershotCaptureAck,
+} from "@/lib/intake/messages";
+import { loadSampleCaptureMessage } from "@/lib/sample/library";
+
+type IntakeMode = "extension" | "sample" | null;
 
 export default function NewNotePage() {
+  return (
+    <Suspense fallback={<NewNotePageFallback />}>
+      <NewNotePageInner />
+    </Suspense>
+  );
+}
+
+function NewNotePageInner() {
   const router = useRouter();
-  const { accepted, accept: acceptTerms } = useTermsAccepted();
+  const searchParams = useSearchParams();
+  const { accepted, ready: termsReady, accept: acceptTerms } = useTermsAccepted();
   const [title, setTitle] = useState("");
   const [images, setImages] = useState<StagedImage[]>([]);
   const [autoOrderIds, setAutoOrderIds] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<OrderConfidence>("high");
   const [rejections, setRejections] = useState<RejectedFile[]>([]);
+  const [enhance, setEnhance] = useState(() => loadEnhancePreference());
+  const [cropImageId, setCropImageId] = useState<string | null>(null);
+  const [intakeMode, setIntakeMode] = useState<IntakeMode>(null);
+  const [pendingAutoRun, setPendingAutoRun] = useState(false);
   const imagesRef = useRef<StagedImage[]>([]);
+  const handledCaptureIdsRef = useRef(new Set<string>());
+  const sampleRequestedRef = useRef(false);
   useEffect(() => {
     imagesRef.current = images;
   }, [images]);
 
-  const { state: pipeline, run, retryJob, reset } = useBatchPipeline();
+  const { state: pipeline, progress, reviewChanges, fallbackInfo, run, retryJob, reset } = useBatchPipeline();
   const { log: debugLog, clear: debugClear, entries: debugEntries } =
     useDebugPanel();
   const isRunning =
@@ -52,24 +84,110 @@ export default function NewNotePage() {
     pipeline.stage === "deduping" ||
     pipeline.stage === "reviewing";
 
+  const clearStagedImages = useCallback(() => {
+    setImages((prev) => {
+      for (const image of prev) {
+        try {
+          URL.revokeObjectURL(image.objectUrl);
+          if (image.originalObjectUrl && image.originalObjectUrl !== image.objectUrl) {
+            URL.revokeObjectURL(image.originalObjectUrl);
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      return [];
+    });
+    setAutoOrderIds([]);
+    setConfidence("high");
+    setCropImageId(null);
+  }, []);
+
   const handleFilesAdded = useCallback(
     async (
       accepted: File[],
       dropzoneRejections: Array<{ file: File; reason: string }>,
+      options: { skipValidation?: boolean; suggestedTitle?: string } = {},
     ) => {
       const fresh: StagedImage[] = [];
       const newRejections: RejectedFile[] = dropzoneRejections.map((r) => ({
         name: r.file.name,
         reason: r.reason,
       }));
+
+      const currentCount = imagesRef.current.length;
+      const remainingSlots = Math.max(0, MAX_IMAGES_PER_NOTE - currentCount);
+
+      if (remainingSlots === 0) {
+        newRejections.push({
+          name: `${accepted.length} file${accepted.length === 1 ? "" : "s"}`,
+          reason: `Maximum ${MAX_IMAGES_PER_NOTE} images per note.`,
+        });
+        setRejections(newRejections);
+        return;
+      }
+
+      let addedCount = 0;
       for (const file of accepted) {
-        if (!isAcceptedImage(file)) {
+        if (addedCount >= remainingSlots) {
+          newRejections.push({
+            name: file.name,
+            reason: `Maximum ${MAX_IMAGES_PER_NOTE} images per note.`,
+          });
+          continue;
+        }
+        if (!options.skipValidation && !isAcceptedImage(file)) {
           newRejections.push({
             name: file.name,
             reason: rejectionReason(file),
           });
           continue;
         }
+
+        if (isPdfFile(file)) {
+          try {
+            const { renderPdfToPageImages } = await import("@/lib/upload/pdf");
+            const { pages, warning } = await renderPdfToPageImages(file);
+            if (warning) {
+              newRejections.push({ name: file.name, reason: warning });
+            }
+            for (const page of pages) {
+              if (addedCount >= remainingSlots) {
+                newRejections.push({
+                  name: `${file.name} page ${page.pageNumber}`,
+                  reason: `Maximum ${MAX_IMAGES_PER_NOTE} images per note.`,
+                });
+                break;
+              }
+              const blob = await fetch(page.dataUrl).then((r) => r.blob());
+              const pageFile = new File([blob], `${file.name} page ${page.pageNumber}.jpg`, {
+                type: "image/jpeg",
+                lastModified: Date.now(),
+              });
+              const objectUrl = URL.createObjectURL(blob);
+              fresh.push({
+                id: nanoid(),
+                file: pageFile,
+                objectUrl,
+                previewUrl: objectUrl,
+                detectedAt: null,
+                timestampSource: "insertion",
+                source: "pdf-page",
+                pageNumber: page.pageNumber,
+                enhanced: false,
+                croppedRegion: null,
+              });
+              addedCount++;
+            }
+          } catch {
+            newRejections.push({
+              name: file.name,
+              reason: "Failed to render PDF pages. The file may be corrupted or password-protected.",
+            });
+          }
+          continue;
+        }
+
         const objectUrl = URL.createObjectURL(file);
         fresh.push({
           id: nanoid(),
@@ -78,11 +196,19 @@ export default function NewNotePage() {
           previewUrl: objectUrl,
           detectedAt: null,
           timestampSource: "insertion",
+          source: "screenshot",
+          enhanced: false,
+          croppedRegion: null,
         });
+        addedCount++;
       }
 
       setRejections(newRejections);
       if (fresh.length === 0) return;
+
+      if (!title.trim() && options.suggestedTitle?.trim()) {
+        setTitle(options.suggestedTitle.trim());
+      }
 
       const combined = [...imagesRef.current, ...fresh];
       const { ordered, confidence } = await detectAndOrder(combined);
@@ -90,7 +216,7 @@ export default function NewNotePage() {
       setAutoOrderIds(ordered.map((i) => i.id));
       setConfidence(confidence);
     },
-    [],
+    [title],
   );
 
   const handleRemove = useCallback((id: string) => {
@@ -119,8 +245,8 @@ export default function NewNotePage() {
     if (images.length === 0) return;
     reset();
     debugClear();
-    await run(images);
-  }, [images, reset, run, debugClear]);
+    await run(images, { enhance });
+  }, [images, reset, run, debugClear, enhance]);
 
   useEffect(() => {
     if (pipeline.timing) {
@@ -135,13 +261,26 @@ export default function NewNotePage() {
 
   const handleRetry = useCallback(
     (imageId: string) => {
-      retryJob(imageId, images);
+      retryJob(imageId, images, { enhance });
     },
-    [images, retryJob],
+    [images, retryJob, enhance],
   );
 
   const handleReviewNote = useCallback(async () => {
     if (!pipeline.result) return;
+    const chunks: ChunkMeta[] = pipeline.jobs
+      .filter((j) => j.model !== null)
+      .map((j) => {
+        const imgIndex = images.findIndex((img) => img.id === j.imageId);
+        const img = images[imgIndex];
+        return {
+          imageIndex: imgIndex >= 0 ? imgIndex : 0,
+          model: j.model!,
+          croppedRegion: img?.croppedRegion ?? null,
+          enhanced: img?.enhanced ?? false,
+          source: img?.source ?? "screenshot",
+        };
+      });
     const note = await createNote({
       title: title.trim() || "Untitled note",
       images,
@@ -150,19 +289,139 @@ export default function NewNotePage() {
       anchors: pipeline.result.anchors,
       warnings: pipeline.result.warnings,
       tokenSubsetViolations: pipeline.result.tokenSubsetViolations,
+      chunks,
+      transient: intakeMode === "sample",
     });
     router.push(`/note/${note.id}`);
-  }, [pipeline.result, images, title, router]);
+  }, [pipeline.result, pipeline.jobs, images, title, router, intakeMode]);
+
+  const handleCrop = useCallback((id: string) => {
+    setCropImageId(id);
+  }, []);
+
+  const handleApplyCrop = useCallback(
+    (region: { x: number; y: number; width: number; height: number } | null) => {
+      setImages((prev) =>
+        prev.map((img) =>
+          img.id === cropImageId ? { ...img, croppedRegion: region } : img,
+        ),
+      );
+      setCropImageId(null);
+    },
+    [cropImageId],
+  );
+
+  const handleCancelCrop = useCallback(() => {
+    setCropImageId(null);
+  }, []);
+
+  const handleStartFresh = useCallback(() => {
+    reset();
+    clearStagedImages();
+    setTitle("");
+    setRejections([]);
+    setIntakeMode(null);
+    setPendingAutoRun(false);
+    router.replace("/new");
+  }, [clearStagedImages, reset, router]);
+
+  useEffect(() => {
+    const onMessage = async (event: MessageEvent) => {
+      if (event.source !== window || event.origin !== window.location.origin) {
+        return;
+      }
+
+      if (!isPowershotCaptureMessage(event.data)) {
+        return;
+      }
+
+      if (handledCaptureIdsRef.current.has(event.data.captureId)) {
+        postPowershotCaptureAck(event.data.captureId, "staged");
+        return;
+      }
+
+      handledCaptureIdsRef.current.add(event.data.captureId);
+
+      try {
+        const files = await captureMessageToFiles(event.data);
+        await handleFilesAdded(files, [], {
+          skipValidation: true,
+          suggestedTitle: event.data.title,
+        });
+
+        setIntakeMode(event.data.transient ? "sample" : "extension");
+        if (event.data.autoStart) {
+          setPendingAutoRun(true);
+        }
+
+        postPowershotCaptureAck(event.data.captureId, "staged");
+      } catch (error) {
+        handledCaptureIdsRef.current.delete(event.data.captureId);
+        setRejections((prev) => [
+          ...prev,
+          {
+            name: event.data.title || "Incoming capture",
+            reason:
+              error instanceof Error
+                ? error.message
+                : "Failed to stage incoming capture.",
+          },
+        ]);
+      }
+    };
+
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [handleFilesAdded]);
+
+  useEffect(() => {
+    if (searchParams.get("sample") !== "true" || sampleRequestedRef.current) {
+      return;
+    }
+
+    sampleRequestedRef.current = true;
+
+    loadSampleCaptureMessage()
+      .then((message) => {
+        postPowershotCapture(message);
+      })
+      .catch((error) => {
+        setRejections((prev) => [
+          ...prev,
+          {
+            name: "Sample note",
+            reason:
+              error instanceof Error
+                ? error.message
+                : "Failed to load the sample note.",
+          },
+        ]);
+      });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!accepted || !pendingAutoRun || images.length === 0 || isRunning || pipeline.result) {
+      return;
+    }
+
+    setPendingAutoRun(false);
+    void handleGenerate();
+  }, [accepted, handleGenerate, images.length, isRunning, pendingAutoRun, pipeline.result]);
 
   const hasImages = images.length > 0;
   const isReorderedFromAuto =
     hasImages &&
     (images.length !== autoOrderIds.length ||
       images.some((img, idx) => autoOrderIds[idx] !== img.id));
+  const waitingForExtensionCapture =
+    searchParams.get("source") === "extension" &&
+    intakeMode !== "extension" &&
+    !hasImages &&
+    !pipeline.result;
 
   return (
     <>
-      {!accepted && (
+      {termsReady && !accepted && (
         <TermsAcceptance onAccept={acceptTerms} />
       )}
       <UploadSurface onFilesAdded={handleFilesAdded}>
@@ -185,6 +444,58 @@ export default function NewNotePage() {
               or paste screenshots below to begin.
             </p>
           </header>
+
+          {waitingForExtensionCapture && (
+            <Alert className="border-primary/20 bg-primary/5 shadow-sm">
+              <Puzzle className="size-4 text-primary" />
+              <AlertTitle className="font-semibold">
+                Waiting for your Chrome extension capture
+              </AlertTitle>
+              <AlertDescription className="text-muted-foreground font-medium">
+                Keep this tab open for a moment. Powershot will stage the
+                screenshot as soon as the extension posts it.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {intakeMode === "sample" && (
+            <Alert className="border-primary/20 bg-primary/5 shadow-sm">
+              <Sparkles className="size-4 text-primary" />
+              <AlertTitle className="font-semibold">
+                Sample note loaded
+              </AlertTitle>
+              <AlertDescription className="flex flex-col gap-3 text-muted-foreground font-medium sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  This demo note runs through the same intake path as the
+                  extension flow. It stays transient and is cleared after this
+                  session.
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleStartFresh}
+                  className="rounded-full"
+                >
+                  <RotateCcw className="mr-2 size-3.5" />
+                  Start fresh
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {intakeMode === "extension" && hasImages && (
+            <Alert className="border-primary/20 bg-primary/5 shadow-sm">
+              <Puzzle className="size-4 text-primary" />
+              <AlertTitle className="font-semibold">
+                Capture imported from the Chrome extension
+              </AlertTitle>
+              <AlertDescription className="text-muted-foreground font-medium">
+                Review the staged screenshot, adjust the title if needed, then
+                generate the note as usual.
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Title input */}
           <div className="flex flex-col gap-2">
@@ -254,6 +565,9 @@ export default function NewNotePage() {
                     Staged screenshots
                     <span className="ml-2 rounded-full bg-muted px-2.5 py-0.5 text-xs font-bold text-muted-foreground">
                       {images.length}
+                      {images.length >= MAX_IMAGES_PER_NOTE && (
+                        <span className="ml-1 text-destructive">(max)</span>
+                      )}
                     </span>
                   </h2>
                   {isReorderedFromAuto && (
@@ -266,22 +580,47 @@ export default function NewNotePage() {
                     </button>
                   )}
                 </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={openFilePicker}
-                  className="rounded-full font-bold shadow-sm"
-                >
-                  <ImagePlus className="mr-2 size-4" />
-                  Add more
-                </Button>
+                <div className="flex items-center gap-3">
+                  <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/50">
+                    <input
+                      type="checkbox"
+                      checked={enhance}
+                      onChange={(e) => {
+                        setEnhance(e.target.checked);
+                        saveEnhancePreference(e.target.checked);
+                        setImages((prev) =>
+                          prev.map((img) =>
+                            img.source === "screenshot"
+                              ? { ...img, enhanced: e.target.checked }
+                              : img,
+                          ),
+                        );
+                      }}
+                      className="size-3.5 accent-primary"
+                    />
+                    <Wand2 className="size-3" />
+                    <span className="hidden sm:inline">Enhance faint screenshots</span>
+                    <span className="sm:hidden">Enhance</span>
+                  </label>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={openFilePicker}
+                    disabled={images.length >= MAX_IMAGES_PER_NOTE}
+                    className="rounded-full font-bold shadow-sm"
+                  >
+                    <ImagePlus className="mr-2 size-4" />
+                    Add more
+                  </Button>
+                </div>
               </div>
 
               <Filmstrip
                 images={images}
                 onReorder={handleReorder}
                 onRemove={handleRemove}
+                onCrop={handleCrop}
               />
             </div>
           )}
@@ -291,6 +630,9 @@ export default function NewNotePage() {
             <ProgressPanel
               jobs={pipeline.jobs}
               onRetry={handleRetry}
+              progress={progress}
+              stage={pipeline.stage}
+              totalImages={images.length}
             />
           )}
 
@@ -345,6 +687,22 @@ export default function NewNotePage() {
                 </AlertDescription>
               </Alert>
             )}
+
+          {/* Review-change summary */}
+          {pipeline.result && reviewChanges && (
+            <ReviewChangeSummaryPanel summary={reviewChanges} />
+          )}
+
+          {/* Fallback model banner */}
+          {pipeline.result && fallbackInfo && (
+            <FallbackBanner
+              modelNames={pipeline.jobs
+                .filter((j) => j.model !== null && j.model !== "google/gemini-2.5-pro")
+                .map((j) => j.model!)
+                .filter((v, i, a) => a.indexOf(v) === i)
+              }
+            />
+          )}
 
           {/* Ordering warnings */}
           {pipeline.result && pipeline.result.warnings.length > 0 && (
@@ -434,6 +792,19 @@ export default function NewNotePage() {
             )}
           </div>
 
+          {cropImageId && (
+            <CropOverlay
+              imageUrl={
+                images.find((i) => i.id === cropImageId)?.previewUrl ||
+                images.find((i) => i.id === cropImageId)?.objectUrl ||
+                ""
+              }
+              initialCrop={images.find((i) => i.id === cropImageId)?.croppedRegion}
+              onApply={handleApplyCrop}
+              onCancel={handleCancelCrop}
+            />
+          )}
+
           <DebugPanel entries={debugEntries} onClear={debugClear} />
         </div>
       )}
@@ -460,7 +831,7 @@ function EmptyState({ onPick }: { onPick: () => void }) {
           </p>
           <p className="mx-auto max-w-md text-sm font-medium text-muted-foreground leading-relaxed">
             Drag files, click to browse, or paste directly from your clipboard.
-            We support PNG, JPG, WebP, and HEIC.
+            We support PNG, JPG, WebP, HEIC, and PDF.
           </p>
         </div>
         <div className="mt-2 flex items-center gap-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
@@ -474,6 +845,20 @@ function EmptyState({ onPick }: { onPick: () => void }) {
           </span>
         </div>
       </button>
+    </div>
+  );
+}
+
+function NewNotePageFallback() {
+  return (
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-8 sm:px-6 sm:py-12 md:py-20">
+      <div className="h-4 w-28 rounded bg-muted" />
+      <div className="space-y-3">
+        <div className="h-10 w-72 rounded bg-muted" />
+        <div className="h-5 w-full max-w-2xl rounded bg-muted" />
+      </div>
+      <div className="h-16 w-full rounded-xl bg-muted" />
+      <div className="h-[320px] w-full rounded-3xl bg-muted/70" />
     </div>
   );
 }

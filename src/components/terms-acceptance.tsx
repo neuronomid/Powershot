@@ -1,7 +1,7 @@
 "use client";
 
 import { Shield, ScrollText } from "lucide-react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,9 +19,16 @@ function readStoredAcceptance(): boolean {
 
 export function useTermsAccepted(): {
   accepted: boolean;
+  ready: boolean;
   accept: () => void;
 } {
-  const [accepted, setAccepted] = useState(readStoredAcceptance);
+  const [accepted, setAccepted] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setAccepted(readStoredAcceptance());
+    setReady(true);
+  }, []);
 
   const accept = useCallback(() => {
     try {
@@ -30,9 +37,10 @@ export function useTermsAccepted(): {
       // localStorage unavailable
     }
     setAccepted(true);
+    setReady(true);
   }, []);
 
-  return { accepted, accept };
+  return { accepted, ready, accept };
 }
 
 export function TermsAcceptance({

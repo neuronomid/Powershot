@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Powershot",
+  "short_name": "Powershot",
+  "description": "Capture the visible tab or a selected region directly into Powershot.",
+  "version": "0.1.0",
+  "homepage_url": "https://powershot.app",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Capture to Powershot"
+  },
+  "background": {
+    "service_worker": "assets/background.js",
+    "type": "module"
+  },
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": [
+    "https://powershot.app/*",
+    "https://*.powershot.app/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://powershot.app/new*",
+        "https://*.powershot.app/new*",
+        "http://localhost:3000/new*"
+      ],
+      "js": ["assets/app-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "commands": {
+    "capture-visible-tab": {
+      "suggested_key": {
+        "default": "Alt+Shift+S"
+      },
+      "description": "Capture the visible tab to Powershot"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

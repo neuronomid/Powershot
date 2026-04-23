@@ -6,6 +6,10 @@ export const defaultTheme: ExportTheme = {
   headingFont: "Inter",
   baseSize: "medium",
   lineSpacing: "1.5",
+  pageSize: "us-letter",
+  margins: "standard",
+  includeToc: true,
+  includeFooter: false,
 };
 
 export const presetThemes: Record<ThemePreset, ExportTheme> = {
@@ -15,6 +19,10 @@ export const presetThemes: Record<ThemePreset, ExportTheme> = {
     headingFont: "Georgia",
     baseSize: "medium",
     lineSpacing: "1.5",
+    pageSize: "us-letter",
+    margins: "standard",
+    includeToc: true,
+    includeFooter: false,
   },
   modern: {
     preset: "modern",
@@ -22,6 +30,10 @@ export const presetThemes: Record<ThemePreset, ExportTheme> = {
     headingFont: "Inter",
     baseSize: "medium",
     lineSpacing: "1.5",
+    pageSize: "us-letter",
+    margins: "standard",
+    includeToc: true,
+    includeFooter: false,
   },
   sepia: {
     preset: "sepia",
@@ -29,6 +41,10 @@ export const presetThemes: Record<ThemePreset, ExportTheme> = {
     headingFont: "Merriweather",
     baseSize: "medium",
     lineSpacing: "1.5",
+    pageSize: "us-letter",
+    margins: "standard",
+    includeToc: true,
+    includeFooter: false,
   },
   minimal: {
     preset: "minimal",
@@ -36,5 +52,9 @@ export const presetThemes: Record<ThemePreset, ExportTheme> = {
     headingFont: "IBM Plex Sans",
     baseSize: "small",
     lineSpacing: "1.15",
+    pageSize: "us-letter",
+    margins: "standard",
+    includeToc: true,
+    includeFooter: false,
   },
 };

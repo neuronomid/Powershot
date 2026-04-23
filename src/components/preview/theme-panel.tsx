@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Download,
@@ -8,6 +8,11 @@ import {
   Palette,
   Settings2,
   X,
+  FileCode,
+  List,
+  Ruler,
+  AlignHorizontalSpaceAround,
+  Type,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +22,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import type { ExportTheme, FontChoice, BaseSize, LineSpacing } from "@/lib/theme/types";
+import { Checkbox } from "@/components/ui/checkbox";
+import type { ExportTheme, FontChoice, BaseSize, LineSpacing, PageSize, Margins } from "@/lib/theme/types";
 import { presetThemes } from "@/lib/theme/presets";
 import { saveTheme } from "@/lib/theme/storage";
 
@@ -50,6 +56,18 @@ const SPACINGS: { key: LineSpacing; label: string }[] = [
   { key: "2.0", label: "2.0" },
 ];
 
+const PAGE_SIZES: { key: PageSize; label: string }[] = [
+  { key: "us-letter", label: "US Letter" },
+  { key: "a4", label: "A4" },
+  { key: "a5", label: "A5" },
+];
+
+const MARGIN_OPTIONS: { key: Margins; label: string }[] = [
+  { key: "narrow", label: "Narrow (15 mm)" },
+  { key: "standard", label: "Standard (25 mm)" },
+  { key: "wide", label: "Wide (35 mm)" },
+];
+
 type ThemePanelProps = {
   theme: ExportTheme;
   onChange: (theme: ExportTheme) => void;
@@ -59,9 +77,18 @@ type ThemePanelProps = {
 
 export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps) {
   const [open, setOpen] = useState(false);
-  const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
+  const [exporting, setExporting] = useState<"pdf" | "docx" | "md" | null>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
+
+  const headingCount = useMemo(() => {
+    let count = 0;
+    for (const line of markdown.split("\n")) {
+      const trimmed = line.trim();
+      if (/^#{1,3}\s/.test(trimmed)) count++;
+    }
+    return count;
+  }, [markdown]);
 
   const update = useCallback(
     (patch: Partial<ExportTheme>) => {
@@ -99,7 +126,7 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
   }, [open]);
 
   const handleExport = useCallback(
-    async (format: "pdf" | "docx") => {
+    async (format: "pdf" | "docx" | "md") => {
       setExporting(format);
       const t0 = performance.now();
       try {
@@ -125,6 +152,9 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
           )
         ) {
           throw new Error("DOCX export returned an unexpected file type.");
+        }
+        if (format === "md" && !contentType.includes("text/markdown")) {
+          throw new Error("Markdown export returned an unexpected file type.");
         }
 
         const blob = await res.blob();
@@ -174,6 +204,16 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
           {exporting === "docx" ? "DOCX…" : "DOCX"}
         </Button>
         <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handleExport("md")}
+          disabled={exporting !== null}
+          className="rounded-full text-xs font-semibold"
+        >
+          <FileCode className="mr-1.5 size-3.5" />
+          {exporting === "md" ? "MD…" : "MD"}
+        </Button>
+        <Button
           variant="ghost"
           size="sm"
           onClick={() => setOpen((v) => !v)}
@@ -192,7 +232,7 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <Card style={popoverStyle} className="z-50 shadow-xl">
+          <Card style={popoverStyle} className="z-50 shadow-xl max-h-[80dvh] overflow-y-auto">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Palette className="size-4 text-muted-foreground" />
@@ -309,6 +349,82 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Page size */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <Ruler className="size-3" />
+                  Page size
+                </label>
+                <div className="flex gap-2">
+                  {PAGE_SIZES.map((s) => (
+                    <button
+                      key={s.key}
+                      onClick={() => update({ pageSize: s.key })}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+                        theme.pageSize === s.key
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/30 hover:bg-muted/50"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Margins */}
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground">
+                  <AlignHorizontalSpaceAround className="size-3" />
+                  Margins
+                </label>
+                <div className="flex gap-2">
+                  {MARGIN_OPTIONS.map((m) => (
+                    <button
+                      key={m.key}
+                      onClick={() => update({ margins: m.key })}
+                      className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
+                        theme.margins === m.key
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border bg-muted/30 hover:bg-muted/50"
+                      }`}
+                    >
+                      {m.label.split(" (")[0]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Toggles */}
+              <div className="space-y-2.5">
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <Checkbox
+                    checked={theme.includeToc}
+                    onCheckedChange={(checked) => update({ includeToc: checked === true })}
+                  />
+                  <span className="flex items-center gap-1">
+                    <List className="size-3 text-muted-foreground" />
+                    Include table of contents
+                  </span>
+                </label>
+                {headingCount < 3 && (
+                  <p className="text-[10px] text-muted-foreground pl-6">
+                    TOC appears when the note has 3+ headings.
+                  </p>
+                )}
+
+                <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                  <Checkbox
+                    checked={theme.includeFooter}
+                    onCheckedChange={(checked) => update({ includeFooter: checked === true })}
+                  />
+                  <span className="flex items-center gap-1">
+                    <Type className="size-3 text-muted-foreground" />
+                    Add &quot;Made with Powershot&quot; footer
+                  </span>
+                </label>
               </div>
             </CardContent>
           </Card>

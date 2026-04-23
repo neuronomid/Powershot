@@ -12,12 +12,20 @@ export type BaseSize = "small" | "medium" | "large" | "x-large";
 
 export type LineSpacing = "1.15" | "1.5" | "2.0";
 
+export type PageSize = "us-letter" | "a4" | "a5";
+
+export type Margins = "narrow" | "standard" | "wide";
+
 export type ExportTheme = {
   preset: ThemePreset;
   bodyFont: FontChoice;
   headingFont: FontChoice;
   baseSize: BaseSize;
   lineSpacing: LineSpacing;
+  pageSize: PageSize;
+  margins: Margins;
+  includeToc: boolean;
+  includeFooter: boolean;
 };
 
 export const BASE_SIZE_PT: Record<BaseSize, number> = {
@@ -83,4 +91,32 @@ export const PRESET_COLORS: Record<
     accent: "#000000",
     muted: "#f5f5f5",
   },
+};
+
+/** Puppeteer PDF format names. */
+export const PAGE_SIZE_PDF_FORMAT: Record<PageSize, string> = {
+  "us-letter": "Letter",
+  a4: "A4",
+  a5: "A5",
+};
+
+/** DOCX page dimensions in TWIPs. */
+export const PAGE_SIZE_DOCX_TWIPS: Record<PageSize, { width: number; height: number }> = {
+  "us-letter": { width: 12240, height: 15840 },
+  a4: { width: 11906, height: 16838 },
+  a5: { width: 8391, height: 11906 },
+};
+
+/** Margin values in millimeters. */
+export const MARGIN_MM: Record<Margins, number> = {
+  narrow: 15,
+  standard: 25,
+  wide: 35,
+};
+
+/** Margin values in TWIPs (1 mm ≈ 56.6929 TWIPs). */
+export const MARGIN_TWIPS: Record<Margins, number> = {
+  narrow: 850,
+  standard: 1417,
+  wide: 1984,
 };

@@ -1,16 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   FileText,
   History,
   Trash2,
   AlertTriangle,
+  Search,
+  X,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SampleNoteCard } from "@/components/onboarding/sample-note-card";
 import { listNotes, deleteNote, deleteOldestNote, QuotaExceededError } from "@/lib/note/store";
 import type { Note } from "@/lib/note/types";
 
@@ -19,6 +22,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isQuotaError, setIsQuotaError] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +72,18 @@ export default function HomePage() {
       setIsQuotaError(false);
     }
   }, []);
+
+  const filteredNotes = useMemo(() => {
+    if (!searchQuery.trim()) return notes;
+    const q = searchQuery.toLowerCase();
+    return notes.filter(
+      (n) =>
+        n.title.toLowerCase().includes(q) ||
+        n.markdown.toLowerCase().includes(q),
+    );
+  }, [notes, searchQuery]);
+
+  const showSearch = notes.length >= 3;
 
   return (
     <div className="relative isolate -mt-20 overflow-hidden pt-16 sm:pt-20">
@@ -124,6 +140,31 @@ export default function HomePage() {
           </p>
         </div>
 
+        {showSearch && (
+          <div className="mx-auto mt-6 max-w-2xl lg:mx-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search notes…"
+                className="w-full rounded-xl border border-border/60 bg-background pl-9 pr-9 py-2.5 text-sm font-medium text-foreground shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="mx-auto mt-8 flex flex-col sm:flex-row items-start sm:items-center gap-3 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">
             <div className="flex items-center gap-2">
@@ -156,33 +197,40 @@ export default function HomePage() {
                 </CardContent>
               </Card>
             ))
-          ) : notes.length === 0 ? (
-            <Card className="group relative overflow-hidden transition-all hover:shadow-xl hover:shadow-primary/5 ring-1 ring-border/50 bg-card/50 backdrop-blur-sm">
-              <CardContent className="p-8">
-                <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-                  <div className="rounded-full bg-muted p-4 transition-colors group-hover:bg-primary/10">
-                    <FileText className="size-8 text-muted-foreground transition-colors group-hover:text-primary" />
+          ) : filteredNotes.length === 0 ? (
+            searchQuery ? (
+              <Card className="group relative overflow-hidden transition-all hover:shadow-xl hover:shadow-primary/5 ring-1 ring-border/50 bg-card/50 backdrop-blur-sm">
+                <CardContent className="p-8">
+                  <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
+                    <div className="rounded-full bg-muted p-4 transition-colors group-hover:bg-primary/10">
+                      <FileText className="size-8 text-muted-foreground transition-colors group-hover:text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-base font-semibold text-foreground">
+                        No notes match your search
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Try a different keyword or clear your search.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSearchQuery("")}
+                      className="rounded-full"
+                    >
+                      Clear search
+                    </Button>
                   </div>
-                  <div>
-                    <p className="text-base font-semibold text-foreground">
-                      No notes yet
-                    </p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Your generated notes will appear here.
-                    </p>
-                  </div>
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="mt-4 rounded-full group-hover:bg-primary group-hover:text-primary-foreground group-hover:border-primary transition-all"
-                  >
-                    <Link href="/new">Create your first note</Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="lg:col-span-3">
+                <SampleNoteCard />
+              </div>
+            )
           ) : (
-            notes.map((note) => (
+            filteredNotes.map((note) => (
               <Link
                 key={note.id}
                 href={`/note/${note.id}`}

@@ -1,6 +1,6 @@
 import { nanoid } from "nanoid";
 
-import type { ChunkAnchor, OrderingWarning } from "@/lib/pipeline/types";
+import type { ChunkAnchor, OrderingWarning, ChunkMeta } from "@/lib/pipeline/types";
 import type { StagedImage } from "@/lib/upload/types";
 import type { ExportTheme } from "@/lib/theme/types";
 import { defaultTheme } from "@/lib/theme/presets";
@@ -10,8 +10,6 @@ import * as db from "./db";
 export { QuotaExceededError } from "./db";
 export const deleteOldestNote = db.deleteOldestNote;
 
-// In-memory session cache. Notes with images live here for the current session.
-// IndexedDB holds the persisted copy (no images).
 const sessionCache = new Map<string, Note>();
 
 function createNoteId(): string {
@@ -26,7 +24,9 @@ export async function createNote(params: {
   anchors: ChunkAnchor[];
   warnings: OrderingWarning[];
   tokenSubsetViolations: string[] | null;
+  chunks?: ChunkMeta[];
   preferences?: ExportTheme;
+  transient?: boolean;
 }): Promise<Note> {
   const now = Date.now();
   const note: Note = {
@@ -34,25 +34,27 @@ export async function createNote(params: {
     title: params.title?.trim() || "Untitled note",
     createdAt: now,
     updatedAt: now,
+    transient: params.transient ?? false,
     images: params.images,
     markdown: params.markdown,
     extractedMarkdown: params.extractedMarkdown,
     anchors: params.anchors,
     warnings: params.warnings,
     tokenSubsetViolations: params.tokenSubsetViolations,
+    chunks: params.chunks ?? [],
     preferences: params.preferences ?? defaultTheme,
   };
   sessionCache.set(note.id, note);
-  await db.saveNote(toPersisted(note));
+  if (!note.transient) {
+    await db.saveNote(toPersisted(note));
+  }
   return note;
 }
 
 export async function getNote(id: string): Promise<Note | undefined> {
-  // 1. Check session cache first (may have images from current session)
   const cached = sessionCache.get(id);
   if (cached) return cached;
 
-  // 2. Fall back to IndexedDB
   const persisted = await db.getNote(id);
   if (!persisted) return undefined;
 
@@ -74,7 +76,9 @@ export async function updateNote(
       : { ...fromPersisted(existing as db.PersistedNote), ...patch, updatedAt: Date.now() };
 
   sessionCache.set(id, updated);
-  await db.saveNote(toPersisted(updated));
+  if (!updated.transient) {
+    await db.saveNote(toPersisted(updated));
+  }
   return updated;
 }
 
@@ -82,7 +86,6 @@ export async function deleteNote(id: string): Promise<boolean> {
   const note = sessionCache.get(id) ?? (await db.getNote(id));
   if (!note) return false;
 
-  // Revoke object URLs to prevent memory leaks.
   const images = "images" in note ? (note as Note).images : [];
   for (const img of images) {
     try {
@@ -93,7 +96,9 @@ export async function deleteNote(id: string): Promise<boolean> {
   }
 
   sessionCache.delete(id);
-  await db.deleteNote(id);
+  if (!("transient" in note) || !(note as Note).transient) {
+    await db.deleteNote(id);
+  }
   return true;
 }
 
@@ -110,12 +115,12 @@ export async function appendToNote(
     anchors: ChunkAnchor[];
     warnings: OrderingWarning[];
     tokenSubsetViolations: string[] | null;
+    chunks?: ChunkMeta[];
   },
 ): Promise<Note | undefined> {
   const existing = await getNote(id);
   if (!existing) return undefined;
 
-  // Append new markdown with a blank line separator.
   const newMarkdown = existing.markdown
     ? `${existing.markdown}\n\n${params.markdown}`
     : params.markdown;
@@ -123,7 +128,6 @@ export async function appendToNote(
     ? `${existing.extractedMarkdown}\n\n${params.extractedMarkdown}`
     : params.extractedMarkdown;
 
-  // Merge anchors: shift new anchors by the length of existing markdown + 2 for separator.
   const offset = existing.markdown.length + 2;
   const shiftedAnchors = params.anchors.map((a) => ({
     ...a,
@@ -142,11 +146,14 @@ export async function appendToNote(
         ? [...existing.tokenSubsetViolations, ...params.tokenSubsetViolations]
         : existing.tokenSubsetViolations
       : params.tokenSubsetViolations,
+    chunks: [...existing.chunks, ...(params.chunks ?? [])],
     updatedAt: Date.now(),
   };
 
   sessionCache.set(id, updated);
-  await db.saveNote(toPersisted(updated));
+  if (!updated.transient) {
+    await db.saveNote(toPersisted(updated));
+  }
   return updated;
 }
 
@@ -163,8 +170,9 @@ function toPersisted(note: Note): db.PersistedNote {
     anchors: note.anchors,
     warnings: note.warnings,
     tokenSubsetViolations: note.tokenSubsetViolations,
+    chunks: note.chunks,
     preferences: note.preferences,
-    _schemaVersion: 1,
+    _schemaVersion: 2,
   };
 }
 
@@ -174,17 +182,18 @@ function fromPersisted(p: db.PersistedNote): Note {
     title: p.title,
     createdAt: p.createdAt,
     updatedAt: p.updatedAt,
-    images: [], // Images are not persisted across sessions.
+    transient: false,
+    images: [],
     markdown: p.markdown,
     extractedMarkdown: p.extractedMarkdown,
     anchors: p.anchors,
     warnings: p.warnings,
     tokenSubsetViolations: p.tokenSubsetViolations,
+    chunks: p.chunks ?? [],
     preferences: p.preferences,
   };
 }
 
-// Clean up all object URLs on page unload to avoid leaks.
 if (typeof window !== "undefined") {
   window.addEventListener("beforeunload", () => {
     for (const note of sessionCache.values()) {

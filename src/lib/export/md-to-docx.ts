@@ -10,6 +10,7 @@ import {
   BorderStyle,
   Packer,
   LevelFormat,
+  TableOfContents,
   type FileChild,
 } from "docx";
 import { remark } from "remark";
@@ -25,7 +26,15 @@ import type {
 } from "mdast";
 
 import type { ExportTheme } from "@/lib/theme/types";
-import { BASE_SIZE_PT, LINE_SPACING_VAL, FONT_CSS, PRESET_COLORS } from "@/lib/theme/types";
+import {
+  BASE_SIZE_PT,
+  LINE_SPACING_VAL,
+  FONT_CSS,
+  PRESET_COLORS,
+  PAGE_SIZE_DOCX_TWIPS,
+  MARGIN_TWIPS,
+} from "@/lib/theme/types";
+import { FOOTER_TEXT } from "@/lib/theme/constants";
 
 function fontName(font: string): string {
   // Extract the first quoted font name for docx font field.
@@ -48,6 +57,16 @@ function withOpacity(hex: string, opacity: number): string {
     parseInt(hex.slice(5, 7), 16) * opacity + 255 * (1 - opacity),
   );
   return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
+function countHeadings(root: Root): number {
+  let count = 0;
+  for (const node of root.children) {
+    if (node.type === "heading" && node.depth >= 1 && node.depth <= 3) {
+      count++;
+    }
+  }
+  return count;
 }
 
 function mdastToDocx(params: {
@@ -308,10 +327,10 @@ function mdastToDocx(params: {
           new TableCell({
             children: cellChildren.length ? cellChildren : [new Paragraph({ children: [] })],
             borders: {
-              top: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
-              bottom: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
-              left: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
-              right: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              top: { color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              bottom: { color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              left: { color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              right: { color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
             },
           }),
         );
@@ -326,12 +345,54 @@ function mdastToDocx(params: {
   }
 
   const children: FileChild[] = [];
+
+  // TOC
+  const headingCount = countHeadings(root);
+  if (theme.includeToc && headingCount >= 3) {
+    children.push(
+      new TableOfContents("Table of Contents", {
+        hyperlink: true,
+        headingStyleRange: "1-3",
+      }),
+    );
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: "Press Ctrl+A then F9 in Word to refresh the table of contents.",
+            italics: true,
+            color: PRESET_COLORS[theme.preset].foreground,
+            size: Math.round(baseSizeHalfPt * 0.875),
+          }),
+        ],
+        spacing: { after: Math.round(basePt * 6) },
+      }),
+    );
+  }
+
   for (const node of root.children as (BlockContent | DefinitionContent)[]) {
     if (node.type === "list") {
       children.push(...listToParagraphs(node, 0));
     } else {
       children.push(...blockToChildren(node));
     }
+  }
+
+  // Footer
+  if (theme.includeFooter) {
+    children.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: FOOTER_TEXT,
+            color: PRESET_COLORS[theme.preset].foreground,
+            size: Math.round(ptToHalfPt(8)),
+          }),
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing: { before: Math.round(basePt * 8) },
+      }),
+    );
   }
 
   return children;
@@ -351,6 +412,9 @@ export async function markdownToDocxBuffer(params: {
   const bodyFont = fontName(theme.bodyFont);
   const headingFont = fontName(theme.headingFont);
 
+  const pageSize = PAGE_SIZE_DOCX_TWIPS[theme.pageSize];
+  const margin = MARGIN_TWIPS[theme.margins];
+
   const doc = new Document({
     title,
     sections: [
@@ -358,11 +422,15 @@ export async function markdownToDocxBuffer(params: {
         children,
         properties: {
           page: {
+            size: {
+              width: pageSize.width,
+              height: pageSize.height,
+            },
             margin: {
-              top: Math.round(basePt * 72),
-              right: Math.round(basePt * 61.2),
-              bottom: Math.round(basePt * 72),
-              left: Math.round(basePt * 61.2),
+              top: margin,
+              right: margin,
+              bottom: margin,
+              left: margin,
             },
           },
         },

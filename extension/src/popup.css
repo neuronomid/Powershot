@@ -1,0 +1,125 @@
+:root {
+  color-scheme: light dark;
+  font-family: "SF Pro Display", "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(180, 95, 42, 0.22), transparent 38%),
+    radial-gradient(circle at bottom right, rgba(60, 130, 246, 0.18), transparent 42%),
+    #f5efe6;
+  color: #1f1c17;
+}
+
+.popup-shell {
+  padding: 14px;
+}
+
+.popup-card {
+  border: 1px solid rgba(76, 59, 39, 0.14);
+  border-radius: 24px;
+  background: rgba(255, 251, 246, 0.9);
+  box-shadow: 0 20px 38px rgba(92, 67, 39, 0.12);
+  padding: 18px;
+}
+
+.eyebrow {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #8c4b1f;
+}
+
+h1 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+.subhead {
+  margin: 12px 0 18px;
+  color: #5f574e;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: grid;
+  gap: 10px;
+}
+
+button,
+.link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 42px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 120ms ease, opacity 120ms ease, background 120ms ease;
+}
+
+button:hover,
+.link:hover {
+  transform: translateY(-1px);
+}
+
+.primary {
+  background: linear-gradient(180deg, #b45f2a, #9a4e20);
+  color: #fff8f2;
+}
+
+.secondary,
+.link {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: rgba(76, 59, 39, 0.16);
+  color: inherit;
+}
+
+.link {
+  margin-top: 12px;
+}
+
+.status {
+  min-height: 18px;
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: #6b6156;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background:
+      radial-gradient(circle at top left, rgba(180, 95, 42, 0.24), transparent 36%),
+      radial-gradient(circle at bottom right, rgba(60, 130, 246, 0.18), transparent 40%),
+      #120f0b;
+    color: #f8f2ea;
+  }
+
+  .popup-card {
+    background: rgba(33, 26, 20, 0.92);
+    border-color: rgba(255, 239, 220, 0.08);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.32);
+  }
+
+  .subhead,
+  .status {
+    color: #cfc0af;
+  }
+
+  .secondary,
+  .link {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #f8f2ea;
+  }
+}

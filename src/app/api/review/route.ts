@@ -4,6 +4,12 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 import { callReview } from "@/lib/ai/openrouter";
+import {
+  checkRateLimit,
+  checkRequestSize,
+  createRateLimitResponse,
+  createSizeLimitResponse,
+} from "@/lib/rate-limit";
 
 function extractWordTokens(text: string): Set<string> {
   const tokens = new Set<string>();
@@ -17,6 +23,16 @@ function extractWordTokens(text: string): Set<string> {
 }
 
 export async function POST(request: Request) {
+  const sizeCheck = checkRequestSize(request);
+  if (!sizeCheck.valid) {
+    return createSizeLimitResponse(sizeCheck.size!);
+  }
+
+  const rateLimit = await checkRateLimit(request, "review");
+  if (!rateLimit.allowed) {
+    return createRateLimitResponse(rateLimit.retryAfterSeconds!);
+  }
+
   try {
     const body = (await request.json()) as { markdown?: string };
 

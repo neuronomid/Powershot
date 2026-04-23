@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-label="Sample recipe article">
+  <defs>
+    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fffaf2" />
+      <stop offset="100%" stop-color="#f4e6d1" />
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="1080" fill="#efe3d2" />
+  <rect x="120" y="56" width="1200" height="968" rx="34" fill="url(#paper)" stroke="#d4c0a3" stroke-width="4" />
+  <text x="190" y="150" fill="#964b26" font-family="Georgia, serif" font-size="30" font-weight="700">Kitchen Journal</text>
+  <text x="190" y="236" fill="#2d2118" font-family="Georgia, serif" font-size="70" font-weight="700">Weeknight tomato braise</text>
+  <text x="190" y="290" fill="#6c5c4d" font-family="Arial, sans-serif" font-size="28">A fast stovetop dinner with chickpeas, greens, and toasted bread.</text>
+  <rect x="190" y="340" width="500" height="560" rx="26" fill="#fff7ed" stroke="#ead9bf" stroke-width="3" />
+  <text x="230" y="406" fill="#7c3f1d" font-family="Arial, sans-serif" font-size="34" font-weight="700">Ingredients</text>
+  <g fill="#43352a" font-family="Arial, sans-serif" font-size="27">
+    <text x="230" y="472">- 2 tbsp olive oil</text>
+    <text x="230" y="522">- 4 garlic cloves, sliced</text>
+    <text x="230" y="572">- 2 cups crushed tomatoes</text>
+    <text x="230" y="622">- 1 can chickpeas</text>
+    <text x="230" y="672">- 3 cups spinach</text>
+    <text x="230" y="722">- Salt, pepper, red pepper flakes</text>
+    <text x="230" y="772">- Bread for serving</text>
+  </g>
+  <rect x="742" y="340" width="460" height="260" rx="28" fill="#b96d3c" />
+  <circle cx="972" cy="470" r="112" fill="#f7d9b0" />
+  <circle cx="972" cy="470" r="84" fill="#c65039" />
+  <rect x="742" y="644" width="460" height="256" rx="26" fill="#fff7ed" stroke="#ead9bf" stroke-width="3" />
+  <text x="782" y="708" fill="#7c3f1d" font-family="Arial, sans-serif" font-size="34" font-weight="700">Method</text>
+  <g fill="#43352a" font-family="Arial, sans-serif" font-size="27">
+    <text x="782" y="766">1. Sizzle garlic in oil for 30 seconds.</text>
+    <text x="782" y="808">2. Add tomatoes and chickpeas; simmer 12 minutes.</text>
+    <text x="782" y="850">3. Fold in spinach until wilted.</text>
+    <text x="782" y="892">4. Spoon over toasted bread and finish with pepper.</text>
+  </g>
+</svg>

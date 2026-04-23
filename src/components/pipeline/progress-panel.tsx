@@ -2,12 +2,27 @@ import {
   AlertCircle,
   CheckCircle2,
   Clock,
+  Info,
   Loader2,
   RefreshCw,
   Sparkles,
 } from "lucide-react";
 
-import type { ExtractionJob } from "@/lib/pipeline/types";
+import type { BatchProgress, ExtractionJob, PipelineStage } from "@/lib/pipeline/types";
+import { MODEL_CHAIN } from "@/lib/ai/openrouter";
+import { BatchProgressBar } from "./batch-progress";
+
+const PRIMARY_MODEL = MODEL_CHAIN[0];
+
+function getModelDisplayName(model: string | null): string {
+  if (!model) return "";
+  const map: Record<string, string> = {
+    "google/gemini-2.5-pro": "Gemini 2.5 Pro",
+    "google/gemini-2.5-flash": "Gemini 2.5 Flash",
+    "anthropic/claude-haiku-4-5": "Claude Haiku 4.5",
+  };
+  return map[model] ?? model;
+}
 
 function statusIcon(status: ExtractionJob["status"]) {
   switch (status) {
@@ -31,7 +46,7 @@ function statusIcon(status: ExtractionJob["status"]) {
   }
 }
 
-function statusLabel(status: ExtractionJob["status"]) {
+function statusLabel(status: ExtractionJob["status"]): string {
   switch (status) {
     case "queued":
       return "Queued";
@@ -51,12 +66,13 @@ function statusLabel(status: ExtractionJob["status"]) {
 type ProgressPanelProps = {
   jobs: ExtractionJob[];
   onRetry: (imageId: string) => void;
+  progress: BatchProgress | null;
+  stage: PipelineStage;
+  totalImages: number;
 };
 
-export function ProgressPanel({ jobs, onRetry }: ProgressPanelProps) {
-  const doneCount = jobs.filter((j) => j.status === "done").length;
-  const total = jobs.length;
-  const percent = total > 0 ? Math.round((doneCount / total) * 100) : 0;
+export function ProgressPanel({ jobs, onRetry, progress, stage, totalImages }: ProgressPanelProps) {
+  const isSingleImage = totalImages <= 1;
 
   return (
     <div
@@ -64,29 +80,19 @@ export function ProgressPanel({ jobs, onRetry }: ProgressPanelProps) {
       role="region"
       aria-label="Extraction progress"
     >
+      {/* Batch progress bar (hidden for single image) */}
+      {progress && !isSingleImage && (
+        <BatchProgressBar progress={progress} stage={stage} totalImages={totalImages} />
+      )}
+
+      {/* Per-image progress */}
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-          Progress
+          Per-image status
         </h3>
         <span className="text-xs font-semibold text-muted-foreground" aria-live="polite">
-          {doneCount} / {total}
+          {jobs.filter((j) => j.status === "done").length} / {jobs.length}
         </span>
-      </div>
-
-      <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-        role="progressbar"
-        aria-valuenow={percent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-label="Overall extraction progress"
-      >
-        <div
-          className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
-          style={{
-            width: `${percent}%`,
-          }}
-        />
       </div>
 
       <ul className="flex flex-col gap-2" role="list" aria-label="Per-image extraction status">
@@ -100,6 +106,16 @@ export function ProgressPanel({ jobs, onRetry }: ProgressPanelProps) {
               <span className="truncate text-xs font-medium text-foreground">
                 {job.fileName}
               </span>
+              {job.status === "done" && job.model && (
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  {getModelDisplayName(job.model)}
+                </span>
+              )}
+{job.status === "done" && job.model !== null && job.model !== PRIMARY_MODEL && (
+                <span title="A fallback model was used for this section; you may want to skim it.">
+                  <Info className="size-3 text-muted-foreground cursor-help" />
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3 shrink-0">
               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">

@@ -1,6 +1,8 @@
 import {
+  CODE_EXTRACTION_SYSTEM_PROMPT,
   DEDUP_SYSTEM_PROMPT,
   EXTRACTION_SYSTEM_PROMPT,
+  MATH_EXTRACTION_SYSTEM_PROMPT,
   REVIEW_SYSTEM_PROMPT,
 } from "./prompts";
 
@@ -133,26 +135,35 @@ async function fetchWithRetry(
   throw lastError ?? new Error("All retries failed");
 }
 
+const PROMPT_BY_TYPE: Record<string, string> = {
+  default: EXTRACTION_SYSTEM_PROMPT,
+  code: CODE_EXTRACTION_SYSTEM_PROMPT,
+  math: MATH_EXTRACTION_SYSTEM_PROMPT,
+};
+
 /**
  * Extract Markdown from a single image via OpenRouter.
  * Falls back through MODEL_CHAIN on failure.
  *
  * @param imageBase64DataUrl - e.g. "data:image/jpeg;base64,/9j/4AAQ..."
  * @param apiKey - OpenRouter API key
+ * @param promptType - Optional prompt variant: "default" | "code" | "math"
  * @returns Extracted markdown and the model that produced it
  */
 export async function extractMarkdownFromImage(
   imageBase64DataUrl: string,
   apiKey: string,
+  promptType: string = "default",
 ): Promise<{ markdown: string; model: string }> {
   const url = "https://openrouter.ai/api/v1/chat/completions";
+  const systemPrompt = PROMPT_BY_TYPE[promptType] ?? EXTRACTION_SYSTEM_PROMPT;
 
   for (const model of MODEL_CHAIN) {
     try {
       const body: OpenRouterRequest = {
         model,
         messages: [
-          { role: "system", content: EXTRACTION_SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           {
             role: "user",
             content: [

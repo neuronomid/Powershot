@@ -1,6 +1,6 @@
 # Powershot v2 — Product Requirements Document
 
-**Version:** 2.0
+**Version:** 2.1 (revised 2026-04-23 after audit)
 **Date:** April 23, 2026
 **Status:** Draft for review
 **Companion to:** [`PRD.md`](./PRD.md) (v1), [`Plan2.md`](./Plan2.md)
@@ -9,9 +9,11 @@
 
 ## 1. Summary
 
-Powershot v1 turns screenshots into clean, structured notes. v2 turns a functional tool into a professional-grade product: smarter inputs, transparent AI, deeper exports, a browser extension that eliminates the screenshot loop entirely, and the infrastructure to share it safely with the world.
+Powershot v1 turns screenshots into clean, structured notes. v2 turns a functional tool into a professional-grade product: smarter inputs, transparent AI, deeper exports, a Chrome extension that eliminates the screenshot loop, and the infrastructure to share it safely with the world.
 
-The core bet of v1 — that a vision model extracts better than OCR — is proven. v2 bets that giving users more input types (PDFs, cropped regions, pre-processed images), more visibility into what the AI did (streaming, diffs, confidence scores), and more ways to get their text out (clipboard, Markdown files, TOC, page sizes) transforms a tool people use into one they trust, rely on, and recommend.
+The core bet of v1 — that a vision model extracts better than OCR — is proven. v2 bets that giving users more input types (PDFs, cropped regions, rotation-corrected images), clear visibility into what the AI did (a summary of what review changed, per-image model badges), and more ways to get their text out (clipboard, Markdown files, TOC, page sizes) transforms a tool people use into one they trust, rely on, and recommend.
+
+**Revision note.** This doc was revised after an audit of the initial v2 draft. Features that risked misleading users or degrading extraction quality — self-reported confidence coloring, automatic math/code classification, token-level streaming, aggressive default pre-processing, PDF native-text hybrid extraction, and a full offline Service Worker — were cut from v2 or deferred to v2.1. Section bodies for deferred items are left as one-line placeholders so cross-references remain stable.
 
 ---
 
@@ -20,13 +22,12 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 ### Goals
 
 - Increase extraction quality on degraded, low-contrast, tilted, or screenshot-of-screenshot inputs.
-- Give users visibility into and trust over every AI decision (diffs, confidence, fallback transparency).
-- Accept PDF files as first-class input alongside images, with hybrid text/vision extraction.
+- Give users visibility into how the AI handled their input (a plain-English summary of what the review pass changed, per-image model badges, an overall batch progress bar with ETA).
+- Accept PDF files as first-class input alongside images, processed through the existing VLM pipeline.
 - Provide professional-grade export options: Markdown download, auto-generated TOC, configurable page sizes and margins.
-- Reduce friction from "I see something on screen" to "I have a note" via a browser extension (Chrome + Firefox).
-- Make the app usable without network for viewing, editing, and exporting existing notes.
+- Reduce friction from "I see something on screen" to "I have a note" via a Chrome extension (visible-tab + region capture).
 - Protect the service from abuse with rate limiting before public launch.
-- Ensure end-to-end reliability with comprehensive pipeline and export tests.
+- Ensure end-to-end reliability with comprehensive pipeline and export tests, and no regression against the v1 fidelity harness.
 
 ### Non-goals for v2
 
@@ -36,6 +37,7 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 - Handwriting recognition.
 - Mobile native app or PWA camera integration.
 - Collaborative or real-time editing.
+- **Deferred to v2.1:** token-level streaming; model-reported confidence coloring; automatic math/code classification with re-extraction; PDF native-text hybrid extraction (text-layer → Markdown structure inference); Firefox extension; full-page scroll-and-stitch capture; Service Worker / offline mode.
 
 ---
 
@@ -59,12 +61,11 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 
 **Spec:**
 
-- Add a "Copy" button in the editor toolbar (and optionally in the theme panel).
-- Copies the current Markdown to the clipboard in two formats:
-  - `text/plain`: raw Markdown source.
-  - `text/html`: rendered HTML (via the existing `remark` + `rehype` pipeline) for rich paste into Gmail, Slack, etc.
-- Show a brief confirmation toast: "Copied to clipboard".
-- Fallback: if the Clipboard API is unavailable, copy plain Markdown only and show "Copied as plain text".
+- Add a "Copy" button in the editor toolbar.
+- **Default action:** copy raw Markdown source to the clipboard as `text/plain` only. This is what users editing in Notion/Obsidian/Slack/VS Code actually want — dual-format clipboards (plain + HTML) frequently cause host apps to paste the rendered HTML, turning the Markdown source into rich-text soup.
+- **Secondary action:** a "Copy as rich text" menu option (accessible via a small caret next to the main button) writes both `text/plain` (raw MD) and `text/html` (rendered via the existing `remark` + `rehype` pipeline), for users pasting into Gmail or docs.
+- Show a brief confirmation toast: "Copied to clipboard" / "Copied as rich text".
+- Fallback: if the Clipboard API is unavailable, `document.execCommand('copy')` with plain Markdown.
 
 ### 3.3 Note search
 
@@ -77,93 +78,92 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 - Uses simple `includes()` matching (case-insensitive). No need for a full-text search engine at this scale.
 - Results filter in real-time as the user types.
 - Empty state: "No notes match your search" with a "Clear search" link.
-- Search term persists in `localStorage` under `powershot:search-query` so it survives page reloads within the same session.
+- **The search term is session-only (in-memory) and does NOT persist across reloads.** Returning to a filtered home screen after a reload is disorienting — users have reported similar patterns as confusing in other tools.
 
-### 3.4 Progressive streaming display
+### 3.4 Batch progress presentation
 
-**Problem:** Users see "Extracting..." for each image and wait. The psychological experience of 30 seconds of text materializing is dramatically better than 30 seconds of a spinner.
-
-**Spec:**
-
-- Switch the extraction API from a single response to Server-Sent Events (SSE).
-- Stream tokens from the VLM as they arrive, forwarding each chunk to the client.
-- The progress panel updates per-image status to "Extracting..." with a live text preview that fills in progressively.
-- When the stream completes, the full Markdown is finalized and moves to "Reviewing" or "Done".
-- If streaming fails mid-way (network error, model error), the partial text is preserved and the image is marked as "Failed" with a retry button. The partial text is not used in the final output.
-- SSE route runs on Node runtime (Edge has inconsistent SSE support across providers).
-
-### 3.5 Diff view (post-review changes)
-
-**Problem:** Users trust or distrust the AI blindly. Showing exactly what changed between raw extraction and reviewed output builds trust and lets users focus their review.
+**Problem:** During a 30–60 second batch run, users currently see per-image status pills but no aggregate signal of how far along the whole batch is. A 20-image note that is 18 images in feels the same as a 20-image note that is 2 images in. Psychologically, a clear "almost done" signal reduces the perceived wait significantly.
 
 **Spec:**
 
-- After the review pass completes, compute a word-level diff between the pre-review Markdown and the post-review Markdown.
-- Display the diff as an expandable panel above or beside the editor, showing:
-  - **Green/highlighted additions** (content the review pass added — should be rare due to the no-paraphrasing constraint, but surfaced when they occur).
-  - **Red/strikethrough deletions** (content the review pass removed — typically deduplication remnants or structural reorganization).
-  - **Moved blocks** (sections the review pass reordered, shown as arrow indicators).
-- A "Review changes" mode shows the diff; a "Continue editing" button dismisses it and opens the clean editor.
-- The diff is stored in memory only — it is not persisted to IndexedDB.
+- **Overall progress bar.** A horizontal determinate progress bar sits at the top of the pipeline panel during a batch run. It fills in proportion to completed pipeline work, calculated as a weighted sum across stages so the bar moves smoothly rather than jumping in chunks:
+  - Extraction: 70% of total weight, divided equally across images (an image that has completed extraction contributes `0.7 / N`).
+  - Dedup: 10% of total weight (a single pass across the whole note).
+  - Review: 20% of total weight (a single pass across the whole note).
+  - While an image is mid-extraction (request in flight), it contributes half its weight — this gives the bar continuous motion rather than stepwise jumps.
+- **Progress label.** A short text line next to the bar reads, depending on stage:
+  - `"Extracting 7 of 20 images…"` during extraction.
+  - `"Finding overlaps…"` during dedup.
+  - `"Reviewing for structure…"` during review.
+  - `"Done — opening editor"` at completion, visible for ~800 ms before transition.
+- **Estimated time remaining.** After the third image completes, show a rough `"~25 seconds remaining"` estimate based on the median per-image extraction time observed so far in this batch. Update every time an image completes. Never show a shrinking ETA that then grows — if the median increases, hold the ETA steady until it catches up. Hide the ETA entirely if the batch has < 4 images (not enough signal).
+- **Per-image status** (already in v1) continues to show in the filmstrip: `Queued`, `Extracting…`, `Done`, `Failed (retry)`. The overall bar complements, it does not replace, per-image status.
+- **Failure does not reset the bar.** A failed image is counted as "work completed" for progress purposes (it's no longer pending); the user handles retries independently.
+- **No progress bar on single-image runs** — a spinner is clearer than a determinate bar when N=1.
 
-### 3.6 Confidence coloring
+**Token-level SSE streaming is DEFERRED to v2.1.** Streaming tokens from the VLM as they arrive — the original §3.4 proposal — adds Node-runtime SSE plumbing, retry complexity, and a partial-text-vanishes-on-failure UX trap. Once the overall progress bar and ETA land, most of the "am I frozen?" anxiety that streaming would have addressed is already resolved. Revisit once we have real data on where users actually wait.
 
-**Problem:** Users don't know which parts of the extraction to focus their manual review on.
+### 3.5 Review-change summary
+
+**Problem:** Users trust or distrust the AI blindly. Showing what the review pass changed helps them focus their manual review and builds trust in the pipeline.
 
 **Spec:**
 
-- Instruct the VLM extraction prompt to also emit a per-paragraph confidence indicator: `high`, `medium`, or `low`, using a lightweight inline marker (e.g., `<!-- confidence: medium -->` before each block).
-- Parse these markers in the pipeline client-side and annotate the chunk anchors with confidence data.
-- In the editor, render a subtle left-border color on each paragraph:
-  - **Green** (`hsl(142 71% 45%)`) — high confidence, likely correct.
-  - **Amber** (`hsl(38 92% 50%)`) — medium confidence, worth reviewing.
-  - **Red** (`hsl(0 84% 60%)`) — low confidence, probably check this.
-- A toggle in the editor toolbar shows/hides confidence coloring (default: on for the first visit, persisted to `localStorage`).
-- If the model does not emit confidence markers (e.g., fallback models), all blocks default to "unrated" (neutral, no border color).
+- After the review pass completes, surface a compact **"What review changed"** panel above the editor. Because the review pass is bound by the token-subset guardrail (it may reorder and deduplicate but not reword), the dominant change category is deletions and block-level moves — not word-level substitutions.
+- The panel shows:
+  - **Removed passages** (text the review pass dropped, typically dedup-seam remnants) — shown inline as short quoted snippets with a "why" tag (`dedup`, `reorder`) when inferrable.
+  - **Reordered blocks** — a compact list of "Section X moved above Section Y" entries, detected by matching block anchors between pre- and post-review Markdown.
+- The panel does **not** attempt a full word-level diff rendering with green/red/blue highlighting. Word-level diffs on Markdown are noisy due to whitespace/wrap differences; move detection is unreliable. Keep the surface honest and low-false-positive.
+- The panel collapses by default when the review pass made no deletions and no moves. Otherwise it's expanded with a "Dismiss" button that opens the clean editor.
+- Diff computation uses `fast-diff` (~5 KB). `diff-match-patch` is rejected on bundle-size grounds.
+- The change summary is stored in memory only — it is not persisted to IndexedDB.
+
+### 3.6 Confidence coloring — **CUT from v2**
+
+Model-reported confidence scores are known to be poorly calibrated: VLMs can be overconfident on hallucinations and under-confident on correct output. Painting red / amber / green borders on blocks based on these self-reports would actively mislead users — exactly the opposite of the stated "focus your review" goal — while also bloating every extraction with marker tokens.
+
+If we want a "focus your review here" cue in a later revision, we should ground it in something observable (e.g., blocks where review-pass deletions were largest, or where the dedup stage cut seams), not model self-assessment.
 
 ### 3.7 Model fallback transparency
 
-**Problem:** When a chunk falls back from Gemini Pro to Flash or Haiku, the extraction quality may differ. Users are unaware.
+**Problem:** When a chunk falls back from Gemini Pro to Flash or Haiku, the extraction may differ. Users are unaware.
 
 **Spec:**
 
-- The extraction API response already includes `{ model }` indicating which model was used. Surface this in the UI.
-- On the note detail page, show a per-image model badge in the image pane:
-  - "Gemini 2.5 Pro" (green tint)
-  - "Gemini 2.5 Flash" (amber tint, with tooltip: "Fallback model used — consider reviewing this section")
-  - "Claude Haiku 4.5" (red tint, with tooltip: "Secondary fallback — please review carefully")
-- If any image used a fallback model, show a dismissible banner at the top of the editor: "X images used a fallback model. You may want to review those sections more carefully."
-- Model information is stored in the note's chunk anchors and persisted to IndexedDB.
+- The extraction API response already includes `{ model }`. Surface this in the UI.
+- On the note detail page, show a per-image model badge in the image pane as **neutral plain text** (e.g., "Gemini 2.5 Pro", "Gemini 2.5 Flash", "Claude Haiku 4.5"). No red/amber/green color coding — Haiku isn't universally worse than Flash, and alarm colors would mislead users about quality.
+- When any image fell back from the primary model, show a single subtle info icon next to the badge with a tooltip: "A fallback model was used for this section; you may want to skim it."
+- When at least one image in the note used any fallback, show a dismissible info banner at the top of the editor: "Some sections used a fallback model. Consider skimming the affected images."
+- Model information is stored in the note's chunk metadata and persisted to IndexedDB.
 
-### 3.8 PDF upload with hybrid extraction
+### 3.8 PDF upload (VLM path)
 
-**Problem:** Many users screenshot PDFs page by page. Letting them upload a PDF directly eliminates that friction and can produce higher-quality extraction.
+**Problem:** Many users screenshot PDFs page by page. Letting them upload a PDF directly eliminates that friction.
 
 **Spec:**
 
 - Accept `.pdf` files in the upload surface alongside images.
-- Use `pdfjs-dist` to render each page to a canvas image (same 1600px max, JPEG 85% quality as the existing image resize pipeline).
-- **Hybrid extraction mode:**
-  1. Attempt native text extraction using `pdfjs-dist`'s text layer. If a page has ≥ 80% text coverage (by character area vs. page area), use the native text directly — converting it to Markdown with structure inference (heading detection via font size, list detection, table detection).
-  2. If text coverage is < 80% (scanned PDF, image-heavy pages), render the page to an image and send it through the existing VLM extraction pipeline.
-  3. If native text extraction produces garbled or mostly-symbol output (common in scanned PDFs with OCR text layers), fall back to VLM extraction.
+- Use `pdfjs-dist` (lazy-loaded) to render each page to a canvas image using the same 1600px max dimension and JPEG 85% quality as the existing image resize pipeline.
+- **Every page is routed through the existing VLM extraction pipeline.** v2 does **not** implement the "native text layer → heuristic Markdown structure inference" hybrid path. PDFs encode text in arbitrarily weird ways, and font-size-based heading inference / grid-based table inference is a tar pit. The VLM path gives us one extraction quality to reason about instead of two.
 - PDF pages appear in the filmstrip with a PDF icon overlay and "Page N" labels.
-- The entire upload, ordering, and pipeline flow works identically for PDF pages as for screenshots — reordering, dedup, review, everything.
+- Reordering, dedup, review, and export work identically for PDF pages and screenshots.
 - Large PDFs (> 50 pages) show a warning: "Large PDFs may take longer. Consider splitting into sections."
+- **Deferred to v2.1:** native-text fast-path for text-heavy pages, revisited once we have usage data on what kinds of PDFs users actually upload.
 
-### 3.9 Image pre-processing
+### 3.9 Image pre-processing (minimal)
 
-**Problem:** Low-quality screenshots (dark, low contrast, skewed, blurry) produce poor extraction results. Client-side pre-processing can dramatically improve VLM input quality.
+**Problem:** Low-quality screenshots can produce poor extraction. Some pre-processing helps; aggressive defaults hurt as often as they help.
 
 **Spec:**
 
-- Before sending an image to extraction, apply a client-side pre-processing pipeline:
-  1. **Auto-rotate:** Read EXIF `Orientation` tag and rotate the image accordingly. Many phone screenshots are stored with the wrong orientation flag.
-  2. **Contrast enhancement:** Apply a mild contrast stretch (histogram normalization) to screenshots that appear dark or washed out. Detection: compute histogram; if > 70% of pixels fall in the bottom 30% of brightness, apply enhancement.
-  3. **Sharpening:** Apply an unsharp mask (radius 1.0, amount 0.5) to all images. This is a lightweight, quality-improving default for text-heavy screenshots.
-- Pre-processing happens on canvas, before base64 encoding. The pre-processed image is what gets sent to extraction; the original is preserved in the image pane for reference.
-- A subtle indicator on each filmstrip thumbnail: "Enhanced" badge when pre-processing altered the image beyond rotation.
-- Pre-processing is enabled by default. A toggle in the upload surface allows disabling it: "Auto-enhance images" (default: on, persisted to `localStorage`).
+- **Default-on, always safe:** EXIF `Orientation` auto-rotation. Many phone screenshots are stored with the wrong orientation tag; rotating is free and strictly fixes a subset of inputs.
+- **Opt-in, off by default:** a single "Enhance faint screenshots" toggle in the upload surface that applies contrast stretch (histogram normalization) and a mild unsharp mask (radius 1.0, amount 0.3). This is **opt-in** because:
+  - Modern VLMs are robust to normal-quality screenshots; sharpening occasionally degrades text recognition on clean inputs.
+  - Histogram normalization on dark-mode screenshots can invert perceived contrast and confuse the model.
+  - We need real eval data from the fidelity harness before flipping the default.
+- When the toggle is on, a subtle "Enhanced" badge appears on affected filmstrip thumbnails, and the original image is still shown in the image pane for reference.
+- The toggle state persists in `localStorage`.
+- **Before flipping the toggle default to on in v2.1:** run the enhancement on the fidelity-harness fixture set and require no regression in token overlap.
 
 ### 3.10 Region-select crop
 
@@ -177,27 +177,18 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 - The full original image is preserved and shown in the image pane (left side) as context, with the cropped region highlighted.
 - A "Reset crop" button restores the full image for extraction.
 - Crop state is stored per-image in the `StagedImage` object and survives reordering.
+- Keyboard support: arrow keys resize, Shift+arrow moves, Enter applies, Escape cancels.
 
-### 3.11 Math/code detection modes
+### 3.11 Math / code re-extraction (manual only)
 
-**Problem:** The default extraction prompt treats everything as prose. Code screenshots and math formulas are common in the target audience (students, researchers) and deserve specialized extraction.
+**Problem:** The default extraction prompt treats everything as prose. Code screenshots and math formulas occasionally come out worse than they could with a specialized prompt.
 
 **Spec:**
 
-- After extraction, run a lightweight classification pass on each chunk using Gemini Flash (low cost, fast):
-  - If the chunk contains code-like patterns (consistent indentation, syntax keywords, bracket pairs, monospace visual patterns), tag it as `code`.
-  - If the chunk contains math-like patterns (equations, symbols from the math Unicode block, fraction layouts, `∫∑∏√` characters), tag it as `math`.
-  - Otherwise, tag it as `prose`.
-- For chunks tagged `code`, re-extract with a code-specialized prompt that:
-  - Wraps code blocks in triple backticks with appropriate language annotation (inferred from syntax).
-  - Preserves indentation exactly.
-  - Does not attempt to "read" code as prose.
-- For chunks tagged `math`, re-extract with a math-specialized prompt that:
-  - Wraps inline math in `$...$` and display math in `$$...$$` using LaTeX notation.
-  - Preserves equation structure over textual layout.
-- Classification results and re-extraction are performed automatically. The user sees a badge on each chunk in the image pane: "Code", "Math", or no badge for prose.
-- This is a **post-processing step** — the default extraction runs first, then classification tags chunks for potential re-extraction. Re-extraction only happens for tagged chunks, keeping costs low.
-- A "Re-extract as code/math" manual override is available per-image in case classification missed something.
+- **Automatic classification is cut.** The initial v2 draft called for a Gemini Flash classification pass on every chunk, with automatic re-extraction of tagged chunks. That pattern has three problems: (1) meaningful extra cost and latency per note, (2) classifier false positives on mixed-prose-with-inline-code, and (3) a confusing UX where the user watches one extraction silently get replaced by a different one.
+- **v2 ships the high-value manual override only.** Each image in the image pane has a "Re-extract as…" menu with two options: **Code** and **Math**. Choosing "Code" re-runs extraction for that image with a code-specialized prompt (triple-backtick fenced blocks with language inferred from syntax, indentation preserved). Choosing "Math" re-runs with a math-specialized prompt (inline `$...$`, display `$$...$$` LaTeX).
+- The resulting Markdown replaces the original chunk. The user explicitly opted in, so the change is unsurprising.
+- **Deferred to v2.1:** automatic classification if post-launch data shows users frequently hitting the manual override for specific patterns.
 
 ### 3.12 Markdown file download
 
@@ -207,7 +198,7 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 
 - Add a "Download Markdown" button alongside the existing PDF/DOCX buttons in the theme panel.
 - Generates a `.md` file with the note title as the filename (sanitized for filesystem compatibility).
-- The Markdown file contains only the note content — no metadata frontmatter, no YAML header (unless the user edits it in; in v2, we keep it simple).
+- The Markdown file contains only the note content — no metadata frontmatter, no YAML header.
 - Theme settings are irrelevant for Markdown export (it's raw text), so the theme panel does not affect this button's output.
 
 ### 3.13 Table of contents generation
@@ -217,15 +208,15 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 **Spec:**
 
 - When exporting to PDF or DOCX, if the note contains ≥ 3 headings, automatically generate a Table of Contents.
-- **PDF:** Render a TOC section at the top of the document with heading text as clickable internal `#anchor` links. Page numbers require a two-pass Puppeteer render (deferred to v2.1 due to fragility on serverless). Instead, include heading text and `#`-style links in the TOC section.
+- **PDF:** Render a TOC section at the top of the document with heading text as clickable internal `#anchor` links. Page numbers require a two-pass Puppeteer render (deferred to v2.1 due to fragility on serverless).
 - **DOCX:** Insert a Word-native TOC field (`TOC \o "1-3" \h \z \u`). Users can update it in Word with `Ctrl+F9`. Heading styles are already mapped correctly from the existing export pipeline.
-- **Markdown:** Skip TOC (Markdown tooling has its own TOC conventions). However, add a table of contents comment at the top: `<!-- TOC placeholder: your editor may auto-generate one -->`.
-- The TOC is generated from the heading hierarchy. Only headings `#` through `###` are included in the TOC by default. `####` and below are excluded to keep it concise.
-- A toggle in the theme panel: "Include table of contents" (default: on for notes with ≥ 3 headings, persisted).
+- **Markdown:** Skip TOC (Markdown tooling has its own TOC conventions).
+- The TOC is generated from the heading hierarchy. Only headings `#` through `###` are included. `####` and below are excluded.
+- Toggle in the theme panel: "Include table of contents" (default on for notes with ≥ 3 headings, persisted).
 
 ### 3.14 Custom page sizes and margins
 
-**Problem:** International users need A4; academic users need specific margins; some prefer compact Letter layouts. The current export assumes a single format.
+**Problem:** International users need A4; academic users need specific margins; some prefer compact Letter layouts.
 
 **Spec:**
 
@@ -246,30 +237,31 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 - Add a "Footer" toggle in the theme panel: "Add 'Made with Powershot' footer" (default: off).
 - When enabled, the export includes a small footer on the last page (PDF) or at the end of the document (DOCX):
   - PDF: `— Made with Powershot | powershot.app` in 8pt muted color, right-aligned.
-  - DOCX: Same text as a centered footer paragraph in 8pt gray (RGB 156 163 175).
+  - DOCX: Same text as a centered footer paragraph in 8pt gray.
   - Markdown: `*Made with [Powershot](https://powershot.app)*` at the end.
 - The footer text and URL are constants, not user-configurable.
 - The toggle persists in `localStorage` as part of theme preferences.
 
-### 3.16 Browser extension (Chrome + Firefox)
+### 3.16 Chrome extension (v2.0 scope)
 
 **Problem:** The current flow requires taking screenshots, saving them, opening Powershot, and uploading. A browser extension collapses this to one click.
 
 **Spec:**
 
-- **Manifest:** Chrome (Manifest V3) and Firefox (browser-compat manifest). Shared codebase with minor `chrome.*` / `browser.*` API differences abstracted behind a thin wrapper.
-- **Capture modes:**
-  - **Visible tab:** Captures the currently visible viewport. One click.
-  - **Full page:** Captures the entire scrollable page, auto-scrolling and stitching if the page exceeds the viewport. If `chrome.captureVisibleTab` / `browser.captureVisibleTab` is available, use it; otherwise, fall back to scrolling + stitching via content scripts.
-  - **Selection:** User draws a rectangle on the page to capture just that region.
+- **Platform:** Chrome (Manifest V3) only for v2.0. Firefox ships in v2.1.
+- **Capture modes for v2.0:**
+  - **Visible tab:** `chrome.tabs.captureVisibleTab()`. One click, one image.
+  - **Region selection:** Content script injects an overlay where the user drags a rectangle. `captureVisibleTab` + canvas crop.
+- **Deferred to v2.1:** full-page scroll-and-stitch capture (fragile across CSP / shadow DOM / fixed headers / infinite-scroll sites, flagged as High risk in the original draft), Firefox port.
 - **Post-capture flow:**
   1. Extension captures the image(s) as a PNG data URL.
-  2. Extension opens a new tab pointing to `https://[powershot-app-url]/new?source=extension` with images injected via `postMessage` or a shared `IndexedDB`/`localStorage` bridge.
-  3. The Powershot `/new` page detects the injected images and pre-fills the upload stage.
-- **Extension popup UI:** A small popup with three buttons (Visible tab, Full page, Selection) plus a "Open Powershot" link. Dark/light mode matching the browser theme.
-- **Keyboard shortcut:** Default `Ctrl+Shift+S` (customizable) triggers "Visible tab" capture.
-- **Permissions:** `activeTab`, `scripting`, `downloads` (for saving captured images). No `history`, `bookmarks`, or `tabs` beyond `activeTab`.
-- **Firefox notes:** Firefox supports the `browser.clipboard` API for full-page capture. Use `browser` namespace polyfill for compatibility. The Firefox Add-on store has its own review process — plan for an extra 1–2 weeks.
+  2. Extension opens a new tab pointing to `https://[powershot-app-url]/new?source=extension`.
+  3. After the tab emits `window.onload`, the extension sends images via `postMessage`.
+  4. The `/new` page listens for `POWERSHOT_CAPTURE` messages and pre-fills the upload surface.
+- **Extension popup UI:** Two buttons (Visible tab, Region) plus a "Open Powershot" link. Matches browser light/dark theme.
+- **Keyboard shortcut:** Default `Alt+Shift+S` (not `Ctrl+Shift+S` — that collides with Chrome's built-in "Save page as" on Windows/Linux). Triggers "Visible tab" capture. User-customizable via `chrome://extensions/shortcuts`.
+- **Permissions:** `activeTab`, `scripting`. No `history`, `bookmarks`, `tabs`, or `downloads`.
+- **Distribution:** Chrome Web Store. Icons at 16/32/48/128 px required before submission.
 
 ### 3.17 Onboarding with sample note
 
@@ -277,7 +269,7 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 
 **Spec:**
 
-- On the home page (`/`), when no notes exist, show a "Try it with a sample" card with 3–4 pre-loaded sample screenshots (embedded as base64 in the bundle, or fetched from a static CDN asset).
+- On the home page (`/`), when no notes exist, show a "Try it with a sample" card with 3–4 pre-loaded sample screenshots (fetched on demand from `/public/samples/`, not base64-bundled).
 - Sample images represent common use cases:
   1. A lecture slide (academic).
   2. A documentation page (developer).
@@ -285,30 +277,15 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
   4. A recipe or article (general).
 - Clicking "Try it" navigates to `/new?sample=true`, which pre-fills the upload surface with these images and auto-starts the pipeline.
 - The result is a fully interactive note that the user can edit, theme, and export — a complete demo with zero friction.
-- Sample images are not persisted to IndexedDB after the demo session ends (they are marked as `transient` and cleaned up).
+- Sample images are not persisted to IndexedDB after the demo session ends (marked `transient` and cleaned up).
 - A "Start fresh" button clears the demo and shows the empty upload surface.
-- After the first real note is created, the sample card no longer appears (the home page shows real notes instead).
+- After the first real note is created, the sample card no longer appears.
 
-### 3.18 Service Worker (offline: view, edit, export)
+### 3.18 Service Worker / offline mode — **DEFERRED to v2.1+**
 
-**Problem:** Users should be able to view and edit their existing notes without a network connection. Extraction requires the AI pipeline, but reading, editing, and exporting should work offline.
+The initial draft proposed a Service Worker that caches the app shell and disables network-only actions (extract, PDF export) offline. For a tool whose core value is network-dependent extraction, the payoff is small (shell caching) and the downside is large (SW cache-invalidation bugs, a confusing "why can I edit but not export as PDF?" UX, and non-trivial Next.js 16 App Router integration work).
 
-**Spec:**
-
-- Register a Service Worker that caches:
-  - The app shell (HTML, JS, CSS, fonts) using a cache-first strategy with versioned cache names.
-  - A fallback offline page for navigation requests that aren't cached.
-- IndexedDB is already available offline (it's a browser API). No changes needed for note storage.
-- Key offline flows:
-  - **View notes:** Works — notes are in IndexedDB, the app shell is cached.
-  - **Edit notes:** Works — Tiptap runs client-side, saves to IndexedDB.
-  - **Export:** Works for DOCX (the `docx` library is pure JS, no server). PDF export requires Puppeteer (server-side), so:
-    - If offline, the PDF export button is disabled with a tooltip: "PDF export requires an internet connection."
-    - The Markdown export and DOCX export buttons remain functional.
-    - A "Copy to clipboard" button (§3.2) works offline.
-  - **/new page:** The upload surface works (it's client-side). The "Generate" button is disabled with a tooltip: "Extraction requires an internet connection." Users can still stage and reorder images offline.
-- Cache versioning: on deploy, the Service Worker updates its cache. Stale-while-revalidate for static assets. No caching of API responses (extraction, dedup, review, export — these are all POST and shouldn't be cached).
-- The Service Worker is registered in the root layout, not per-page.
+Revisit when we have evidence that users are actively trying to use the app offline.
 
 ### 3.19 Rate limiting and abuse protection
 
@@ -316,17 +293,17 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 
 **Spec:**
 
-- **Vercel-native rate limiting** using Vercel's Edge Config + KV for per-IP rate limiting.
+- **Distributed rate limiter from day one** using Vercel KV (or Upstash Redis, whichever is operational). Per-IP counters, sliding window:
   - Extraction: 20 requests per IP per hour.
   - Dedup: 20 requests per IP per hour.
   - Review: 20 requests per IP per hour.
   - Export: 30 requests per IP per hour.
-  - These limits are generous for legitimate users and restrictive for abuse.
-- **Request-size validation:** Reject any request body > 5 MB at the Edge level (before it reaches the serverless function).
+- **Do NOT use an in-process in-memory limiter.** Vercel serverless functions have no shared memory across invocations — each lambda has its own process — so an in-memory counter enforces nothing at scale. The original draft's "start with in-memory" suggestion was incorrect.
+- **Request-size validation:** Reject any request body > 5 MB in route middleware before the AI call.
 - **Image count cap:** Maximum 30 images per batch via the upload surface. After 30, the upload surface disables with a message: "Maximum 30 images per note."
 - **Rate-limit response:** `429 Too Many Requests` with a `Retry-After` header and a user-friendly message: "You've reached the limit for now. Please try again in X minutes."
 - **No CAPTCHA or accounts required.** Rate limiting is IP-based exclusively for v2.
-- Rate-limit configuration is stored in `src/lib/rate-limit.ts` as constants (not env vars) so it can be updated in a deploy.
+- Rate-limit configuration is stored in `src/lib/rate-limit.ts` as constants so it can be updated in a deploy.
 
 ### 3.20 E2E pipeline and export tests
 
@@ -348,17 +325,18 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
   - 5 PDFs with known content (1 all-text, 1 scanned/image, 1 mixed, 1 with tables, 1 with math/code).
   - 10 images with known expected outputs (hand-verified Markdown).
   - Run in CI (once CI is set up) and locally via `pnpm test:e2e`.
+- **Fidelity harness regression gate:** Before merging any change that touches extraction prompts or pre-processing, require no regression in token overlap against the v1 fixture set.
 
-### 3.21 Diff view — technical specification
+### 3.21 Review-change summary — technical specification
 
-**Word-level diff algorithm:**
-- Use `diff-match-patch` (or a lightweight equivalent) to compute the diff between pre-review and post-review Markdown.
-- Classify diff hunks as:
-  - `added` — content added by the review pass (rare, should be flagged).
-  - `removed` — content removed by the review pass (dedup seams, reorganized sections).
-  - `moved` — blocks that appear in a different position (detected by finding the same content in both versions at different offsets).
-- Render the diff in a collapsible `<details>` element above the editor. Each hunk is shown inline with color coding.
-- The diff panel has two actions: "Review changes" (opens the diff), and "Accept all and continue editing" (dismisses the diff and opens the clean editor).
+Superseded by the reshaped §3.5. Implementation details:
+
+- Use `fast-diff` (~5 KB) to compute a plain-text diff between pre- and post-review Markdown.
+- Classify diff hunks into two user-facing categories only:
+  - **`removed`** — text present in pre-review but absent in post-review.
+  - **`moved`** — for each paragraph-level anchor present in both versions, compare positions; anchors whose position changed by more than one slot are reported as moves.
+- Do **not** attempt to render word-level green/red highlighting inside paragraphs — the signal is too noisy under the token-subset guardrail to be worth the UI weight.
+- The panel lives in a collapsible `<details>` above the editor. If there are zero removals and zero moves, it collapses silently with a muted "Review made no structural changes" caption.
 
 ---
 
@@ -368,41 +346,36 @@ The core bet of v1 — that a vision model extracts better than OCR — is prove
 
 | Package | Purpose |
 |---------|---------|
-| `pdfjs-dist` | PDF rendering and text layer extraction |
-| `diff-match-patch` | Word-level diff computation for the diff view |
-| `@tiptap/extension-history` | Undo/redo support (if not bundled in StarterKit — otherwise, just enable it) |
-| `idb` (existing) | Already used; no change |
-| Vercel Edge Config + KV | Rate limiting (or a lightweight in-memory approach for single-instance deploys) |
+| `pdfjs-dist` | PDF rendering (page-to-canvas). Native text-layer extraction is not used in v2. |
+| `fast-diff` | Lightweight (~5 KB) diff for the review-change summary. |
+| `@tiptap/extension-history` | Undo/redo support (if not bundled in StarterKit — otherwise, just enable it). |
+| Vercel KV (or Upstash Redis) | Distributed rate limiter backing store. |
 
 ### 4.2 New API routes
 
-| Route | Runtime | Purpose |
-|-------|---------|---------|
-| `GET /api/extract/stream` | Node (SSE) | Streaming extraction — same logic as `POST /api/extract` but streams tokens via SSE |
-| `POST /api/classify` | Edge | Classify an extracted chunk as `prose`, `code`, or `math` for re-extraction routing |
+None. The initial draft's `GET /api/extract/stream` (SSE) and `POST /api/classify` (auto math/code classification) are both deferred — see §3.4 and §3.11.
 
 ### 4.3 Modified API routes
 
 | Route | Change |
 |-------|--------|
-| `POST /api/extract` | Accepts PDF page images alongside screenshots. Returns `{ markdown, model, confidence }` — confidence markers are parsed from the model output. |
+| `POST /api/extract` | Accepts PDF page images alongside screenshots (same JPEG payload shape). Returns `{ markdown, model }`. Wrapped with rate-limit middleware. |
+| `POST /api/dedup` | Rate-limit middleware. |
+| `POST /api/review` | Rate-limit middleware. |
 | `POST /api/export?format=pdf` | Accepts `pageSize` and `margin` query params. Inserts TOC section when conditions are met. Appends "Made with Powershot" footer when requested. |
 | `POST /api/export?format=docx` | Same TOC, page size, margin, and footer additions as PDF. |
 | `POST /api/export?format=md` | New format. Returns raw Markdown file. |
-| `POST /api/extract` (rate-limited) | Wrapped with rate-limit middleware. |
 
 ### 4.4 Browser extension
 
 - Separate package in `extension/` directory at the repo root.
 - Built with `vite` + `typescript`.
-- Shared types from `src/lib/` via a shared `../shared/` directory or symlinks.
-- Published to Chrome Web Store and Firefox Add-ons.
+- Shared types from `src/lib/` via symlink or a small shared folder.
+- v2.0: Chrome Web Store only. Firefox deferred to v2.1.
 
-### 4.5 Service Worker
+### 4.5 Service Worker — deferred
 
-- `src/app/sw.ts` compiled with Vercel's built-in PWA support or via `next-pwa` (if compatible with Next.js 16 App Router).
-- Cache manifest lists all static assets and fonts.
-- No caching of `/api/*` routes.
+Not shipped in v2. See §3.18.
 
 ### 4.6 Data model changes
 
@@ -416,14 +389,14 @@ interface Note {
 
 interface ChunkMeta {
   imageIndex: number;
-  model: string;          // Which model was used for extraction
-  confidence: 'high' | 'medium' | 'low' | 'unrated';
-  classification: 'prose' | 'code' | 'math';
+  model: string;          // Which model was used for extraction (for fallback badge)
   croppedRegion: { x: number; y: number; width: number; height: number } | null;
-  enhanced: boolean;      // Whether image pre-processing was applied
+  enhanced: boolean;      // Whether opt-in pre-processing was applied
   source: 'screenshot' | 'pdf-page';
 }
 ```
+
+Note: the original draft included `confidence` and `classification` fields. Both are removed — `confidence` because §3.6 is cut, `classification` because §3.11 auto-classification is cut and manual re-extraction can simply replace the chunk content in place.
 
 The `ExportTheme` type gains:
 
@@ -442,27 +415,28 @@ interface ExportTheme {
 ## 5. Non-functional requirements
 
 - **Performance:** 20-screenshot note end-to-end in under 60 seconds (unchanged from v1). PDF processing should not add more than 5 seconds per page above the VLM extraction time.
-- **Streaming latency:** First token from the extraction SSE stream should arrive within 3 seconds of the API call.
-- **Offline:** App shell loads in < 2 seconds on a repeat visit (cached). Note editing and DOCX export work fully offline.
-- **Rate limits:** Enforced per IP, per hour. Legitimate users should never hit them during normal usage.
-- **Browser extension:** Extension popup loads in < 300ms. Full-page capture completes in < 5 seconds for a page with 10,000px scroll height.
-- **Test coverage:** E2E tests cover the full pipeline (upload → extract → dedup → review → export) with mocked AI responses. Unit tests cover pre-processing, PDF text extraction, diff computation, and rate limiting.
-- **Accessibility:** New features (diff view, confidence coloring, crop overlay, extension popup) meet WCAG AA.
-- **Privacy:** No new server-side persistence. PDF files are processed client-side (rendered to images in the browser). The browser extension sends images directly to the Powershot app (client-side), not to a separate server.
+- **Fidelity:** No regression vs. the v1 fidelity harness on the existing fixture set. Any change touching extraction prompts or pre-processing must clear this gate.
+- **Rate limits:** Enforced per IP, per hour, via a distributed store. Legitimate users should never hit them during normal usage.
+- **Chrome extension:** Extension popup loads in < 300 ms. Visible-tab capture + post-message handoff completes in < 2 seconds on a typical page.
+- **Progress bar:** First frame of the overall progress bar renders within 100 ms of the batch kickoff. ETA appears no later than after the 3rd completed image.
+- **Test coverage:** E2E tests cover the full pipeline (upload → extract → dedup → review → export) with mocked AI responses. Unit tests cover the new pre-processing helpers, PDF-page rendering, diff computation, and rate limiting.
+- **Accessibility:** New features (review-change summary, crop overlay, extension popup) meet WCAG AA.
+- **Privacy:** No new server-side persistence. PDF files are processed client-side (rendered to images in the browser). The Chrome extension sends images to the Powershot web app via `postMessage` only — there is no extension-to-server communication and no shared storage between origins.
 
 ---
 
 ## 6. Success metrics
 
 - **Extraction quality on degraded inputs:** ≥ 15% reduction in user edits after extraction on low-contrast/skewed/tilted inputs, measured via the eval harness on a new fixture set of 15 degraded screenshots.
-- **Streaming adoption:** ≥ 80% of extraction requests use the SSE endpoint (once both exist, the non-streaming endpoint is deprecated).
+- **Fidelity guardrail:** No regression (token overlap) on the existing fidelity-harness fixture set at launch vs. v1.
 - **PDF upload adoption:** ≥ 20% of new notes include at least one PDF within 30 days of launch.
-- **Diff view engagement:** ≥ 50% of users who see the diff view interact with it (expand, review, or dismiss).
+- **Review-change summary engagement:** ≥ 40% of users whose note had any removed/moved content expand the panel at least once.
 - **Copy-to-clipboard usage:** ≥ 30% of note sessions include at least one clipboard copy (measured client-side, no telemetry).
 - **Extension installs:** ≥ 500 active users within 30 days of Chrome Web Store launch.
-- **Offline usage:** ≥ 10% of repeat visitors use the app offline at least once (measured by Service Worker cache hits vs. network requests).
 - **Rate limit effectiveness:** ≤ 0.1% of legitimate users hit rate limits within the first 90 days.
 - **E2E test coverage:** ≥ 10 Playwright scenarios covering upload, extraction, dedup, review, editing, and export.
+
+Deferred metrics (for v2.1 when their features land): streaming adoption, offline usage.
 
 ---
 
@@ -471,64 +445,21 @@ interface ExportTheme {
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
 | `pdfjs-dist` bundle size inflates client bundle significantly | Medium | Load `pdfjs-dist` lazily (dynamic import) only when a PDF file is detected in the upload. The worker file is loaded separately. |
-| Full-page capture in the extension is inconsistent across sites (CSP, shadow DOM, iframes) | High | Fall back to `captureVisibleTab` for sites where full-page capture fails. Log failures for iterative improvement. |
-| SSE streaming adds complexity to the extraction pipeline and may break the existing concurrent orchestration | Medium | Implement SSE as a separate route (`GET /api/extract/stream`) while keeping the existing `POST /api/extract` as fallback. Migrate gradually. |
-| VLM confidence markers are unreliable — some models ignore the instruction | Medium | Default to "unrated" when no markers are present. Never block the pipeline on confidence parsing failure. |
-| Math/code classification adds cost (extra Flash call per chunk) and latency | Medium | Only classify after initial extraction. Skip re-extraction if the initial extraction already looks high-quality (heuristic: low edit distance between extraction and review output). |
-| Service Worker caching breaks on deploy due to stale assets | Medium | Version the cache name with the build hash. Use `skipWaiting()` + `clients.claim()` on update. |
-| Rate limiting using Vercel KV introduces a new dependency and cost | Low | Start with a simple in-memory rate limiter (works for single-instance deploys). Move to Vercel KV when scaling requires it. |
-| The `diff-match-patch` dependency adds weight to the client bundle | Low | Heavy (100KB+). Evaluate lightweight alternatives (e.g., `fast-diff` at 5KB) before committing. |
+| Chrome extension `postMessage` handshake races with tab navigation | Medium | Extension queues captured images and sends after the new tab emits `window.onload`. Add a short retry (up to 3 attempts, 500 ms apart). |
+| Opt-in pre-processing (contrast + sharpen) degrades some inputs | Medium | Ship opt-in only. Before flipping default, require no regression on the fidelity-harness fixture set. |
+| Review-change summary fires on trivial whitespace diffs | Low | Paragraph-level anchoring; ignore hunks whose post-trim character count is < 3. |
+| Rate-limit store (Vercel KV / Upstash) introduces cost and a new dependency | Low | Unavoidable cost of shipping safely. Budget a small monthly line item; the alternative (no rate limiting) is not shippable. |
+| `fast-diff` is too coarse for the change-summary panel | Low | If the output is visibly misleading in eval, fall back to paragraph-level set-diff (remove / added) rather than upgrading to `diff-match-patch`. |
 
 ---
 
 ## 8. Phasing
 
-See [`Plan2.md`](./Plan2.md) for the detailed phase-by-phase development plan. Phases 8–13 build on the completed Phases 0–7 from [`Plan.md`](./Plan.md).
+See [`Plan2.md`](./Plan2.md) for the detailed phase-by-phase development plan. Phases 8–12 build on the completed Phases 0–7 from [`Plan.md`](./Plan.md). Phase 13 is renamed "Onboarding" and no longer includes a Service Worker; offline mode moves to v2.1.
 
 ---
 
-## Appendix A — PDF hybrid extraction decision flow
-
-```
-User uploads .pdf
-    │
-    ▼
-pdfjs-dist renders each page to canvas (for filmstrip preview)
-    │
-    ├── Attempt native text extraction per page
-    │   │
-    │   ├── Text coverage ≥ 80%? ── YES ──► Use native text → Convert to Markdown
-    │   │                                          │
-    │   │                                          ▼
-    │   │                                     Heuristic structure inference
-    │   │                                     (font size → heading level,
-    │   │                                      bullet/number detection → lists,
-    │   │                                      grid detection → tables)
-    │   │
-    │   └── Text coverage < 80%? ── YES ──► Send canvas image to VLM extraction
-    │                                          (existing pipeline)
-    │
-    └── If native text is garbled (≥50% non-alphanumeric)
-        ──► Fall back to VLM extraction for that page
-```
-
-## Appendix B — Confidence marker format
-
-The extraction prompt (modified from v1) appends:
-
-```
-After each Markdown block (paragraph, heading, list, table), insert a confidence marker:
-<!-- confidence: high|medium|low -->
-
-Rules for confidence:
-- high: all text is clearly readable, no ambiguity in structure or content.
-- medium: some text is unclear, blurry, partially cut off, or the structure is ambiguous.
-- low: text is very hard to read, heavily cut off, or the structure cannot be determined with confidence.
-```
-
-The client-side pipeline strips these markers before displaying in the editor but preserves them in the `ChunkMeta` for confidence coloring.
-
-## Appendix C — Browser extension message protocol
+## Appendix — Chrome extension message protocol
 
 The extension communicates with the Powershot web app via `postMessage`:
 
@@ -538,8 +469,8 @@ interface ExtensionMessage {
   type: 'POWERSHOT_CAPTURE';
   images: Array<{
     dataUrl: string;   // base64 PNG data URL
-    title: string;     // e.g., "Full page — example.com"
-    source: 'visible-tab' | 'full-page' | 'selection';
+    title: string;     // e.g., "Visible tab — example.com"
+    source: 'visible-tab' | 'region';
   }>;
 }
 
@@ -551,3 +482,5 @@ interface AckMessage {
 ```
 
 The `/new` page listens for `POWERSHOT_CAPTURE` messages on `window` and pre-fills the upload surface with the received images.
+
+Appendices covering the PDF hybrid-extraction decision flow and the confidence-marker prompt format have been removed — both features are cut from v2.

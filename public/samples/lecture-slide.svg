@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-label="Sample lecture slide">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fcfaf6" />
+      <stop offset="100%" stop-color="#efe3cb" />
+    </linearGradient>
+  </defs>
+  <rect width="1440" height="1080" fill="url(#bg)" />
+  <rect x="90" y="90" width="1260" height="900" rx="36" fill="#fffdfa" stroke="#d3c3ab" stroke-width="4" />
+  <text x="150" y="195" fill="#8c4b1f" font-family="Georgia, serif" font-size="38" font-weight="700">Week 7: Distributed Systems</text>
+  <text x="150" y="255" fill="#2b2b2b" font-family="Arial, sans-serif" font-size="74" font-weight="700">Consensus in practice</text>
+  <text x="150" y="330" fill="#5d5146" font-family="Arial, sans-serif" font-size="28">How nodes agree on a log while failures and network delays keep happening</text>
+  <g fill="#2f4f6b" font-family="Arial, sans-serif" font-size="34">
+    <text x="180" y="455">1. Safety: committed entries never diverge.</text>
+    <text x="180" y="525">2. Liveness depends on timeouts and majority reachability.</text>
+    <text x="180" y="595">3. Leaders serialize writes; followers validate term history.</text>
+    <text x="180" y="665">4. Snapshots trim history but preserve the latest state.</text>
+  </g>
+  <rect x="860" y="390" width="400" height="330" rx="24" fill="#12273a" />
+  <circle cx="940" cy="470" r="34" fill="#f3b16a" />
+  <circle cx="1060" cy="470" r="34" fill="#f3b16a" />
+  <circle cx="1180" cy="470" r="34" fill="#f3b16a" />
+  <path d="M974 470h52M1094 470h52M940 504v72M1060 504v72M1180 504v72" stroke="#f9efe4" stroke-width="12" stroke-linecap="round" />
+  <text x="900" y="770" fill="#6d6255" font-family="Arial, sans-serif" font-size="24">Diagram: leader replicating to followers</text>
+  <text x="150" y="860" fill="#8a7d70" font-family="Arial, sans-serif" font-size="24">Professor Mira Chen | CS 482 | University systems seminar</text>
+</svg>

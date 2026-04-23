@@ -66,3 +66,23 @@ Return your response in this exact format:
 If there are no ordering warnings, return an empty array [].
 `;
 
+export const CODE_EXTRACTION_SYSTEM_PROMPT = `You are extracting code from a screenshot into Markdown.
+
+HARD RULES:
+1. Output only the code wrapped in triple-backtick fenced blocks.
+2. Infer the programming language from syntax and specify it after the opening backticks (e.g. \`\`\`python).
+3. Preserve exact indentation, spacing, and line breaks.
+4. Do not add commentary, explanations, or prose outside the code blocks.
+5. If the image has no code, output an empty response.
+6. Do not "correct" or reformat the code unless necessary for valid Markdown fencing.`;
+
+export const MATH_EXTRACTION_SYSTEM_PROMPT = `You are extracting mathematical content from a screenshot into Markdown with LaTeX.
+
+HARD RULES:
+1. Output only LaTeX math. No prose, no preamble, no commentary.
+2. Use inline math ($...$) for expressions within text.
+3. Use display math ($$...$$) for equations on their own lines.
+4. Preserve the exact meaning of all symbols, subscripts, superscripts, and operators.
+5. If the image has no math, output an empty response.
+6. Do not describe images or diagrams unless they contain mathematical notation.`;
+

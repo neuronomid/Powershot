@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-label="Sample documentation page">
+  <rect width="1440" height="1080" fill="#f4f8fb" />
+  <rect x="0" y="0" width="280" height="1080" fill="#102236" />
+  <text x="48" y="92" fill="#f7fbff" font-family="Arial, sans-serif" font-size="34" font-weight="700">Acme Docs</text>
+  <g fill="#b7c9d8" font-family="Arial, sans-serif" font-size="24">
+    <text x="48" y="170">Getting started</text>
+    <text x="48" y="218">Authentication</text>
+    <text x="48" y="266">Rate limits</text>
+    <text x="48" y="314">Streaming responses</text>
+    <text x="48" y="362">Tool calling</text>
+  </g>
+  <rect x="320" y="68" width="1050" height="944" rx="30" fill="#ffffff" stroke="#d6e0e8" stroke-width="4" />
+  <text x="390" y="158" fill="#1f2933" font-family="Arial, sans-serif" font-size="58" font-weight="700">Tool calling</text>
+  <text x="390" y="212" fill="#567085" font-family="Arial, sans-serif" font-size="28">Give the model explicit tools so it can fetch data, browse, or run actions.</text>
+  <rect x="390" y="268" width="910" height="110" rx="22" fill="#ecf7ff" stroke="#8dc7ea" stroke-width="3" />
+  <text x="425" y="320" fill="#145374" font-family="Menlo, monospace" font-size="28">POST /v1/responses</text>
+  <text x="425" y="356" fill="#145374" font-family="Menlo, monospace" font-size="22">tools: [{type: "web_search"}, {type: "file_search"}]</text>
+  <text x="390" y="464" fill="#1f2933" font-family="Arial, sans-serif" font-size="34" font-weight="700">Best practices</text>
+  <g fill="#3c4d5d" font-family="Arial, sans-serif" font-size="28">
+    <text x="415" y="528">- Keep tool schemas narrow and explicit.</text>
+    <text x="415" y="580">- Validate tool output before acting on it.</text>
+    <text x="415" y="632">- Prefer primary sources for current information.</text>
+    <text x="415" y="684">- Return clear citations when browsing is involved.</text>
+  </g>
+  <rect x="390" y="742" width="910" height="198" rx="24" fill="#0f1720" />
+  <text x="425" y="808" fill="#dbeafe" font-family="Menlo, monospace" font-size="23">const response = await client.responses.create({</text>
+  <text x="463" y="848" fill="#dbeafe" font-family="Menlo, monospace" font-size="23">model: "gpt-5.4",</text>
+  <text x="463" y="888" fill="#dbeafe" font-family="Menlo, monospace" font-size="23">tools: [{ type: "web_search" }],</text>
+  <text x="463" y="928" fill="#dbeafe" font-family="Menlo, monospace" font-size="23">input: "Summarize the latest docs changes"</text>
+  <text x="425" y="968" fill="#dbeafe" font-family="Menlo, monospace" font-size="23">})</text>
+</svg>

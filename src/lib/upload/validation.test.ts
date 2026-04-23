@@ -23,11 +23,15 @@ describe("upload validation", () => {
   });
 
   it.each([
-    ["notes.pdf", "application/pdf"],
     ["archive.zip", "application/zip"],
     ["README.md", "text/markdown"],
   ])("rejects unsupported files: %s", (name, type) => {
     expect(isAcceptedImage(file(name, type))).toBe(false);
+  });
+
+  it("accepts PDF files", () => {
+    expect(isAcceptedImage(file("notes.pdf", "application/pdf"))).toBe(true);
+    expect(isAcceptedImage(file("slides.PDF"))).toBe(true);
   });
 
   it("reports a useful rejection reason", () => {
