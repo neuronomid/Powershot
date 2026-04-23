@@ -12,6 +12,18 @@ export const MODEL_CHAIN = [
 
 export const FLASH_MODEL = "google/gemini-2.5-flash";
 
+const DEFAULT_FETCH_TIMEOUT_MS = 25_000;
+const DEFAULT_MAX_RETRIES = 1;
+
+const EXTRACTION_TIMEOUT_BY_MODEL: Record<
+  (typeof MODEL_CHAIN)[number],
+  number
+> = {
+  "google/gemini-2.5-pro": 32_000,
+  "google/gemini-2.5-flash": 14_000,
+  "anthropic/claude-haiku-4-5": 8_000,
+};
+
 type VisionContent =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
@@ -37,15 +49,71 @@ type OpenRouterResponse = {
   error?: { message: string; code?: number };
 };
 
+type FetchRetryConfig = {
+  maxRetries?: number;
+  timeoutMs?: number;
+};
+
+function summarizeOpenRouterError(status: number, text: string): string {
+  try {
+    const data = JSON.parse(text) as {
+      error?: {
+        message?: string;
+        code?: number;
+        metadata?: { provider_name?: string };
+      };
+    };
+    const code = data.error?.code ? ` code=${data.error.code}` : "";
+    const provider = data.error?.metadata?.provider_name
+      ? ` provider=${data.error.metadata.provider_name}`
+      : "";
+    const message = data.error?.message
+      ? ` message=${data.error.message.slice(0, 180)}`
+      : "";
+
+    return `status=${status}${code}${provider}${message}`;
+  } catch {
+    return `status=${status} body=${text.slice(0, 180)}`;
+  }
+}
+
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`OpenRouter request timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
-  maxRetries = 3,
+  config: FetchRetryConfig = {},
 ): Promise<Response> {
+  const {
+    maxRetries = DEFAULT_MAX_RETRIES,
+    timeoutMs = DEFAULT_FETCH_TIMEOUT_MS,
+  } = config;
+
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const res = await fetch(url, options);
+      const res = await fetchWithTimeout(url, options, timeoutMs);
       if (res.status === 429 || res.status >= 500) {
         if (attempt < maxRetries) {
           const delay = 1000 * 2 ** attempt;
@@ -100,21 +168,31 @@ export async function extractMarkdownFromImage(
         max_tokens: 4096,
       };
 
-      const res = await fetchWithRetry(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "HTTP-Referer": "https://powershot.app",
-          "X-Title": "Powershot",
+      const res = await fetchWithRetry(
+        url,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://powershot.app",
+            "X-Title": "Powershot",
+          },
+          body: JSON.stringify(body),
         },
-        body: JSON.stringify(body),
-      });
+        {
+          maxRetries: 0,
+          timeoutMs: EXTRACTION_TIMEOUT_BY_MODEL[model],
+        },
+      );
 
       if (!res.ok) {
         const errText = await res.text().catch(() => "Unknown error");
         console.error(
-          `[openrouter] ${model} returned ${res.status}: ${errText}`,
+          `[openrouter] ${model} returned ${summarizeOpenRouterError(
+            res.status,
+            errText,
+          )}`,
         );
         continue; // try next model in chain
       }
@@ -192,7 +270,9 @@ export async function callDedup(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "Unknown error");
-    throw new Error(`Dedup failed: ${res.status} ${errText}`);
+    throw new Error(
+      `Dedup failed: ${summarizeOpenRouterError(res.status, errText)}`,
+    );
   }
 
   const data: OpenRouterResponse = await res.json();
@@ -265,7 +345,9 @@ export async function callReview(
 
   if (!res.ok) {
     const errText = await res.text().catch(() => "Unknown error");
-    throw new Error(`Review failed: ${res.status} ${errText}`);
+    throw new Error(
+      `Review failed: ${summarizeOpenRouterError(res.status, errText)}`,
+    );
   }
 
   const data: OpenRouterResponse = await res.json();

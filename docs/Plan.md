@@ -95,7 +95,7 @@ Each phase has:
 **Goal:** Prove the full pipe from browser → server → OpenRouter → Gemini 2.5 Pro → Markdown back, on one image.
 
 **Scope (in):**
-- `/api/extract` route (Edge runtime where possible).
+- `/api/extract` route (Node runtime on Vercel, because vision calls can exceed Edge's initial-response limit).
 - OpenRouter client wrapper with typed request/response.
 - Extraction prompt per PRD Appendix B. Hard rules enforced in the system message.
 - Base64 inline image payload, one image per request.
@@ -136,7 +136,7 @@ Each phase has:
 **Deliverable:** a 10-image batch goes from upload → cleaned, deduplicated, reviewed Markdown with per-image progress and surfaced warnings, all visible in a plain scrollable view.
 
 **Key risks:**
-- Serverless timeout on large batches → orchestrator runs per-image calls from the client in parallel; no single server call exceeds ~30 s.
+- Serverless timeout on large batches → orchestrator runs per-image calls from the client in parallel; OpenRouter routes use Node runtime with a 60 s budget.
 - SSE through Vercel serverless can be finicky → keep the stream on a dedicated Node-runtime route if the Edge runtime misbehaves.
 - Flash review pass silently rewrites content → token-subset guardrail catches this; fixture tests include known-clean inputs to confirm zero violations on the golden path.
 - Dedup is too aggressive and deletes real content → threshold tuned on a small fixture set; user always sees the result in Phase 4's preview before exporting.

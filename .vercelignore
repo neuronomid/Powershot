@@ -1,0 +1,10 @@
+.env
+.env.*
+.vercel
+.next
+node_modules
+coverage
+playwright-report
+playwright-screenshots
+test-results
+*.tsbuildinfo

@@ -60,7 +60,6 @@ type ThemePanelProps = {
 export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps) {
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
-  const [fallbackWarning, setFallbackWarning] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
 
@@ -96,7 +95,6 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
   const handleExport = useCallback(
     async (format: "pdf" | "docx") => {
       setExporting(format);
-      setFallbackWarning(false);
       const t0 = performance.now();
       try {
         const res = await fetch(`/api/export?format=${format}`, {
@@ -110,20 +108,27 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
           throw new Error(err.error ?? "Export failed");
         }
 
+        const contentType = res.headers.get("Content-Type") ?? "";
+        if (format === "pdf" && !contentType.includes("application/pdf")) {
+          throw new Error("PDF export returned an unexpected file type.");
+        }
+        if (
+          format === "docx" &&
+          !contentType.includes(
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          )
+        ) {
+          throw new Error("DOCX export returned an unexpected file type.");
+        }
+
         const blob = await res.blob();
         const elapsed = Math.round(performance.now() - t0);
         console.log(`[export] ${format.toUpperCase()} generated in ${elapsed} ms`);
 
-        const fallback = res.headers.get("X-Fallback-Format");
-        if (fallback === "docx" && format === "pdf") {
-          setFallbackWarning(true);
-        }
-
-        const extension = fallback === "docx" ? "docx" : format;
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${sanitizeFilename(title)}.${extension}`;
+        a.download = `${sanitizeFilename(title)}.${format}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -173,14 +178,6 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
           Theme
         </Button>
       </div>
-
-      {/* Fallback warning */}
-      {fallbackWarning && (
-        <div className="absolute right-0 top-full mt-2 w-64 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
-          PDF generation failed. A DOCX file was returned instead — open it in
-          Word or LibreOffice and export to PDF.
-        </div>
-      )}
 
       {/* Theme panel popover — portaled to body to escape overflow clipping */}
       {open && createPortal(

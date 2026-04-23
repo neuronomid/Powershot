@@ -57,9 +57,9 @@ Single Next.js 16 App Router app (not a monorepo). React 19, TypeScript strict, 
 
 | Path | Runtime | Purpose |
 |------|---------|---------|
-| `POST /api/extract` | Edge | Single-image VLM extraction |
-| `POST /api/dedup` | Edge | Semantic dedup (Flash) |
-| `POST /api/review` | Edge | Review + token-subset guardrail |
+| `POST /api/extract` | Node | Single-image VLM extraction |
+| `POST /api/dedup` | Node | Semantic dedup (Flash) |
+| `POST /api/review` | Node | Review + token-subset guardrail |
 | `POST /api/export` | Node | PDF (Puppeteer, `maxDuration=60`) / DOCX |
 | `POST /api/donate/*` | — | Donation flow (5 routes under `/api/donate/`) |
 
@@ -87,7 +87,7 @@ These are product-defining. Read `CLAUDE.md` §"Load-bearing constraints" for fu
 2. **Zero server-side persistence of image or note data.** Images in memory and transit only. No disk writes, no Vercel Blob, no logs with image bytes or extracted text. Notes client-side (IndexedDB + localStorage).
 3. **Per-image serverless calls.** One image per extraction request. Client orchestrates with concurrency cap ~4. No single call exceeds ~30 s.
 4. **Fallback model chain**: `google/gemini-2.5-pro` → `google/gemini-2.5-flash` → `anthropic/claude-haiku-4-5`.
-5. **Runtime is per-route and deliberate.** Edge for AI routes; Node for export (Puppeteer requires it). Each route declares `export const runtime` at the top. Don't change a runtime without a reason.
+5. **Runtime is per-route and deliberate.** Node for OpenRouter-backed AI routes and export (`maxDuration=60`); Edge for lightweight donation proxy routes. Each route declares `export const runtime` at the top. Don't change a runtime without a reason.
 6. **`OPENROUTER_API_KEY` is server-side only.** Never prefix with `NEXT_PUBLIC_`. Same for `NOWPAYMENTS_API_KEY` and `NOWPAYMENTS_IPN_SECRET`.
 7. **Source images not persisted in v1.** Continue-note appends new Markdown; does not re-open old images. Deferred to v1.1.
 

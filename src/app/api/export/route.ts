@@ -46,7 +46,14 @@ async function generatePdf(params: {
 
   try {
     const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+      timeout: 15_000,
+    });
+    await Promise.race([
+      page.evaluate(() => document.fonts?.ready.then(() => true) ?? true),
+      new Promise((resolve) => setTimeout(resolve, 3_000)),
+    ]);
     const pdfBuffer = await page.pdf({
       format: "Letter",
       printBackground: true,
@@ -119,22 +126,11 @@ export async function POST(request: NextRequest) {
           },
         });
       } catch (pdfErr) {
-        // Fallback: generate DOCX when Puppeteer fails.
-        console.warn("PDF generation failed, falling back to DOCX:", pdfErr);
-        const docxBuffer = await markdownToDocxBuffer({
-          markdown,
-          title,
-          theme: sanitizedTheme,
-        });
-        return new NextResponse(Uint8Array.from(docxBuffer), {
-          status: 200,
-          headers: {
-            "Content-Type":
-              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "Content-Disposition": `attachment; filename="${sanitizeFilename(title)}.docx"`,
-            "X-Fallback-Format": "docx",
-          },
-        });
+        console.error("PDF generation failed:", pdfErr);
+        return NextResponse.json(
+          { error: "PDF generation failed. DOCX export is still available." },
+          { status: 500 },
+        );
       }
     }
 

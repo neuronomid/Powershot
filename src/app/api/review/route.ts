@@ -1,5 +1,7 @@
-// Runtime: Edge. OpenRouter is an external HTTP call; no Node-specific APIs needed.
-export const runtime = "edge";
+// Runtime: Node. The review pass can exceed Vercel Edge's 25s initial response
+// limit for longer notes.
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 import { callReview } from "@/lib/ai/openrouter";
 

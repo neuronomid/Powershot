@@ -180,7 +180,7 @@ Updates stream from the server via Server-Sent Events or a similar mechanism. A 
 ### 6.1 Stack
 
 - **Frontend:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui for primitives, Tiptap for the Markdown editor, `react-dropzone` for uploads, `exifr` for EXIF parsing.
-- **Backend:** Next.js API routes (Node runtime where Puppeteer is needed, Edge runtime elsewhere for lower latency).
+- **Backend:** Next.js API routes (Node runtime for OpenRouter and Puppeteer routes that can exceed Vercel Edge's 25 s initial-response limit; Edge runtime for lightweight proxy routes).
 - **AI:** OpenRouter as the model gateway.
   - Extraction: `google/gemini-2.5-pro` (or latest equivalent) for vision.
   - Review and dedup: `google/gemini-2.5-flash` for cost-efficient reasoning.
@@ -258,7 +258,7 @@ Each image is sent separately to avoid Vercel's 4.5 MB request body limit on ser
 | VLM invents or paraphrases words despite instruction | Medium | Flash review pass with token-subset guardrail; prominent preview with easy edit; clear "the model may make mistakes — please review" messaging. |
 | Screenshot order undetectable (all same mtime, no EXIF, generic filenames) | Medium | Prominent "confirm order" step is already mandatory; thumbnail strip gives the user a quick visual check. |
 | Overlapping screenshots produce duplicated or missing text | Medium | Two-stage dedup (deterministic + semantic); preview pane lets user see and fix. |
-| Vercel serverless function timeouts on large batches | Low | Per-image parallel calls with concurrency cap; exports run in Node runtime with extended timeout; client orchestrates so no single function call exceeds ~30s. |
+| Vercel serverless function timeouts on large batches | Low | Per-image parallel calls with concurrency cap; OpenRouter and export routes run in Node runtime with extended timeout; client orchestrates so no single function call exceeds the configured serverless budget. |
 | OpenRouter outage or Gemini rate limits | Low | Fallback model chain (Pro → Flash → Claude Haiku) configured in OpenRouter; user-facing retry on failure. |
 | Puppeteer on Vercel is fragile | Medium | Use the well-maintained `@sparticuz/chromium` package; have a fallback path that generates PDF from DOCX via a lightweight converter if Puppeteer fails. |
 | Users upload sensitive documents and worry about privacy | High (perception) | Zero-retention architecture + explicit, readable privacy statement linked from every page. |

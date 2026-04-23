@@ -48,9 +48,9 @@ API routes:
 
 | path              | runtime | purpose                          |
 | ----------------- | ------- | -------------------------------- |
-| `POST /api/extract`   | Edge  | single-image VLM extraction      |
-| `POST /api/dedup`     | Edge  | semantic dedup pass              |
-| `POST /api/review`    | Edge  | review + token-subset guardrail  |
+| `POST /api/extract`   | Node  | single-image VLM extraction      |
+| `POST /api/dedup`     | Node  | semantic dedup pass              |
+| `POST /api/review`    | Node  | review + token-subset guardrail  |
 | `POST /api/export`    | Node  | PDF (Puppeteer) / DOCX export    |
 
 ## Environment
@@ -64,8 +64,8 @@ Hosted on Vercel. `main` auto-deploys.
 ### Vercel setup checklist
 
 1. Set `OPENROUTER_API_KEY` in Project Settings → Environment Variables.
-2. Ensure `/api/export` stays on Node runtime (Puppeteer requires it).
-3. For Puppeteer on Vercel, ensure the `@sparticuz/chromium` package is installed and the function max duration is set to 60 s.
+2. Ensure `/api/extract`, `/api/dedup`, `/api/review`, and `/api/export` stay on Node runtime with 60 s max duration. OpenRouter calls can exceed Vercel Edge's 25 s initial-response limit.
+3. For Puppeteer on Vercel, ensure the `@sparticuz/chromium` package is installed.
 4. No additional build settings are required; Next.js builds out of the box.
 
 ## Stack

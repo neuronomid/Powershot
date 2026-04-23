@@ -1,6 +1,7 @@
-// Runtime: Edge for low latency. OpenRouter is an external HTTP call;
-// no Node-specific APIs are required here.
-export const runtime = "edge";
+// Runtime: Node. Vision extraction can exceed Vercel Edge's 25s initial
+// response limit when OpenRouter/Gemini is slow.
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 import { extractMarkdownFromImage } from "@/lib/ai/openrouter";
 
