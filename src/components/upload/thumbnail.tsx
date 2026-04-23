@@ -25,14 +25,14 @@ export function Thumbnail({ src, alt, className }: ThumbnailProps) {
       if (cancelled) return;
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const scale = Math.min(1, canvas.width / img.naturalWidth);
-      const drawW = img.naturalWidth * scale;
-      const drawH = img.naturalHeight * scale;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
+      // Scale image so its width fills the canvas; draw at y=0 so the top of the
+      // screenshot is what's visible. Anything past canvas.height is clipped.
+      const scale = canvas.width / img.naturalWidth;
+      const drawH = img.naturalHeight * scale;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      // Paint the top of the image; anything past 120 * devicePixelRatio is cropped.
-      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, drawW, drawH);
+      ctx.drawImage(img, 0, 0, img.naturalWidth, img.naturalHeight, 0, 0, canvas.width, drawH);
       setStatus("ready");
     };
     img.onerror = () => {

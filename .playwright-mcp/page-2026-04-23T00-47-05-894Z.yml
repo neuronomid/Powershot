@@ -1,0 +1,29 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Powershot" [ref=e4] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=e5]:
+        - link "New note" [ref=e6] [cursor=pointer]:
+          - /url: /new
+        - button "Switch to dark mode" [ref=e7]:
+          - img
+  - main [ref=e8]:
+    - button "Choose File" [ref=e9]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - heading "New note" [level=1] [ref=e12]
+        - paragraph [ref=e13]: Drop screenshots anywhere on this page, pick them from disk, or paste from your clipboard (⌘V). Order is auto-detected — confirm below before generating.
+      - button "Drop screenshots, click to browse, or paste PNG, JPG, WebP, HEIC — uploaded one at a time, never stored on our servers" [ref=e14]:
+        - img [ref=e15]
+        - generic [ref=e18]:
+          - paragraph [ref=e19]: Drop screenshots, click to browse, or paste
+          - paragraph [ref=e20]: PNG, JPG, WebP, HEIC — uploaded one at a time, never stored on our servers
+      - generic [ref=e21]:
+        - button "Generate" [disabled]
+  - contentinfo [ref=e22]:
+    - generic [ref=e23]:
+      - paragraph [ref=e24]: © 2026 Powershot
+      - link "Privacy" [ref=e25] [cursor=pointer]:
+        - /url: /privacy
+  - alert [ref=e26]

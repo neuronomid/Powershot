@@ -1,0 +1,82 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Powershot" [ref=e4] [cursor=pointer]:
+        - /url: /
+      - navigation [ref=e5]:
+        - link "New note" [ref=e6] [cursor=pointer]:
+          - /url: /new
+        - button "Switch to dark mode" [ref=e7]:
+          - img
+  - main [ref=e8]:
+    - button "Choose File" [ref=e9]
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - heading "New note" [level=1] [ref=e12]
+        - paragraph [ref=e13]: Drop screenshots anywhere on this page, pick them from disk, or paste from your clipboard (⌘V). Order is auto-detected — confirm below before generating.
+      - alert [ref=e36]:
+        - img [ref=e37]
+        - generic [ref=e39]: 1 file skipped
+        - list [ref=e41]:
+          - listitem [ref=e42]: document.txt — File type must be one of image/png, .png, image/jpeg, .jpg, .jpeg, image/webp, .webp, image/heic, .heic, image/heif, .heif
+      - generic [ref=e43]:
+        - heading "5 screenshots" [level=2] [ref=e45]
+        - button "Add more" [ref=e46]:
+          - img
+          - text: Add more
+      - list [ref=e47]:
+        - listitem [ref=e48]:
+          - generic [ref=e49]:
+            - generic [ref=e50]: "#1"
+            - button "Remove Screenshot_20240315_094122.png" [ref=e51]:
+              - img
+          - generic "Screenshot_20240315_094122.png" [ref=e52]
+          - button "Reorder Screenshot_20240315_094122.png. Press space to pick up, arrow keys to move, space to drop." [ref=e54]:
+            - generic "Screenshot_20240315_094122.png" [ref=e55]
+            - generic [ref=e56]: 2024-03-15 09:41:22 · filename
+        - listitem [ref=e57]:
+          - generic [ref=e58]:
+            - generic [ref=e59]: "#2"
+            - button "Remove Screenshot 2024-03-15 at 9.42.15 AM.png" [ref=e60]:
+              - img
+          - generic "Screenshot 2024-03-15 at 9.42.15 AM.png" [ref=e61]
+          - button "Reorder Screenshot 2024-03-15 at 9.42.15 AM.png. Press space to pick up, arrow keys to move, space to drop." [ref=e63]:
+            - generic "Screenshot 2024-03-15 at 9.42.15 AM.png" [ref=e64]
+            - generic [ref=e65]: 2024-03-15 09:42:15 · filename
+        - listitem [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]: "#3"
+            - button "Remove IMG_20240315_094305.png" [ref=e69]:
+              - img
+          - generic "IMG_20240315_094305.png" [ref=e70]
+          - button "Reorder IMG_20240315_094305.png. Press space to pick up, arrow keys to move, space to drop." [ref=e72]:
+            - generic "IMG_20240315_094305.png" [ref=e73]
+            - generic [ref=e74]: 2024-03-15 09:43:05 · filename
+        - listitem [ref=e75]:
+          - generic [ref=e76]:
+            - generic [ref=e77]: "#4"
+            - button "Remove Screenshot 2024-03-15 094417.png" [ref=e78]:
+              - img
+          - generic "Screenshot 2024-03-15 094417.png" [ref=e79]
+          - button "Reorder Screenshot 2024-03-15 094417.png. Press space to pick up, arrow keys to move, space to drop." [ref=e81]:
+            - generic "Screenshot 2024-03-15 094417.png" [ref=e82]
+            - generic [ref=e83]: 2024-03-15 09:44:17 · filename
+        - listitem [ref=e84]:
+          - generic [ref=e85]:
+            - generic [ref=e86]: "#5"
+            - button "Remove random-name.png" [ref=e87]:
+              - img
+          - generic "random-name.png" [ref=e88]
+          - button "Reorder random-name.png. Press space to pick up, arrow keys to move, space to drop." [ref=e90]:
+            - generic "random-name.png" [ref=e91]
+            - generic [ref=e92]: 2026-04-22 18:48:00 · file modified
+      - status [ref=e93]
+      - button "Generate" [ref=e94]
+  - contentinfo [ref=e22]:
+    - generic [ref=e23]:
+      - paragraph [ref=e24]: © 2026 Powershot
+      - link "Privacy" [ref=e25] [cursor=pointer]:
+        - /url: /privacy
+  - button "Open Next.js Dev Tools" [ref=e32] [cursor=pointer]:
+    - img [ref=e33]
+  - alert [ref=e26]
