@@ -142,8 +142,8 @@ export function DonateBox({ compact = false }: DonateBoxProps) {
       <div
         className={
           compact
-            ? "rounded-2xl bg-card/60 backdrop-blur-sm ring-1 ring-border/40 p-6"
-            : "rounded-2xl bg-card/60 backdrop-blur-sm ring-1 ring-border/40 p-8"
+            ? "rounded-2xl bg-card/60 backdrop-blur-sm ring-1 ring-border/40 p-4 sm:p-6"
+            : "rounded-2xl bg-card/60 backdrop-blur-sm ring-1 ring-border/40 p-5 sm:p-8"
         }
       >
         <div className="flex items-center gap-2 mb-4">
@@ -176,7 +176,7 @@ export function DonateBox({ compact = false }: DonateBoxProps) {
               <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
                 Amount (USD)
               </label>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {PRESET_AMOUNTS.map((preset) => (
                   <button
                     key={preset}
@@ -210,7 +210,7 @@ export function DonateBox({ compact = false }: DonateBoxProps) {
               <label className="block text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
                 Cryptocurrency
               </label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {POPULAR_CRYPTOS.filter(
                   (c) => currencies.length === 0 || currencies.includes(c.value),
                 ).map((crypto) => (

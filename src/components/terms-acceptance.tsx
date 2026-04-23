@@ -53,9 +53,9 @@ export function TermsAcceptance({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/60 backdrop-blur-lg animate-in fade-in duration-300">
-      <div className="relative mx-4 w-full max-w-lg flex flex-col gap-0 rounded-2xl border border-border/60 bg-popover shadow-2xl ring-1 ring-foreground/5 animate-in zoom-in-95 slide-in-from-bottom-4 duration-400 overflow-hidden">
+      <div className="relative mx-3 sm:mx-4 w-full max-w-lg flex flex-col gap-0 rounded-2xl border border-border/60 bg-popover shadow-2xl ring-1 ring-foreground/5 animate-in zoom-in-95 slide-in-from-bottom-4 duration-400 overflow-hidden">
         {/* Header */}
-        <div className="flex flex-col gap-3 border-b border-border/40 px-6 pt-6 pb-5">
+        <div className="flex flex-col gap-3 border-b border-border/40 px-5 pt-5 pb-4 sm:px-6 sm:pt-6 sm:pb-5">
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Shield className="size-5" />
@@ -75,7 +75,7 @@ export function TermsAcceptance({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="max-h-[52vh] overflow-y-auto px-6 py-5 text-sm leading-relaxed text-muted-foreground space-y-4 scroll-smooth"
+          className="max-h-[55dvh] sm:max-h-[52vh] overflow-y-auto px-5 py-4 sm:px-6 sm:py-5 text-sm leading-relaxed text-muted-foreground space-y-4 scroll-smooth"
         >
           <p className="font-semibold text-foreground">
             Last updated: April 23, 2026
@@ -247,7 +247,7 @@ export function TermsAcceptance({
         )}
 
         {/* Footer */}
-        <div className="flex flex-col gap-4 border-t border-border/40 px-6 py-5">
+        <div className="flex flex-col gap-4 border-t border-border/40 px-5 py-4 sm:px-6 sm:py-5">
           <label className="flex items-start gap-3 cursor-pointer select-none">
             <Checkbox
               checked={checked}

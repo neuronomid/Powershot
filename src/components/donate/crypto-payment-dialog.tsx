@@ -4,6 +4,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Copy, Check } from "lucide-react";
 
+function useQrSize(): number {
+  const [size, setSize] = useState(192);
+  useEffect(() => {
+    const update = () => {
+      setSize(window.innerWidth < 400 ? 160 : 192);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return size;
+}
+
 import {
   Dialog,
   DialogContent,
@@ -98,6 +111,7 @@ export function CryptoPaymentDialog({
   const [copied, setCopied] = useState(false);
   const [countdown, setCountdown] = useState("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const qrSize = useQrSize();
 
   const pollStatus = useCallback(() => {
     if (!payment) return;
@@ -181,7 +195,7 @@ export function CryptoPaymentDialog({
             <div className="flex flex-col items-center gap-4 py-4">
               <QRCodeSVG
                 value={payment.payAddress}
-                size={192}
+                size={qrSize}
                 level="M"
                 bgColor="transparent"
                 fgColor="currentColor"

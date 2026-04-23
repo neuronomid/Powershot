@@ -73,7 +73,7 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
       >
         <SortableContext items={images.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
           <ol
-            className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 sm:gap-4"
+            className="grid grid-cols-[repeat(auto-fill,minmax(105px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] md:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-2 sm:gap-3 md:gap-4"
             role="list"
             aria-label="Screenshot order. Use arrow keys or drag to reorder."
           >
@@ -143,7 +143,7 @@ function FilmstripItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "group relative flex flex-col gap-2 rounded-xl border border-border bg-card p-3",
+        "group relative flex flex-col gap-2 rounded-xl border border-border bg-card p-2 sm:p-3",
         "focus-within:ring-2 focus-within:ring-ring",
         isDragging && "z-10 opacity-90 shadow-2xl scale-[1.02] ring-2 ring-primary/30",
       )}

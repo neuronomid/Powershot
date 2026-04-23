@@ -1,0 +1,145 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Powershot Logo" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "Powershot Logo" [ref=e6]
+      - navigation [ref=e7]:
+        - link "Donate" [ref=e8] [cursor=pointer]:
+          - /url: /#donate
+          - img [ref=e11]
+        - link "Create new note" [ref=e13] [cursor=pointer]:
+          - /url: /new
+          - generic [ref=e14]: +
+          - generic [ref=e15]: + New Note
+        - button "Toggle theme" [ref=e16]
+  - main [ref=e18]:
+    - generic [ref=e20]:
+      - generic [ref=e22]:
+        - img [ref=e24]
+        - generic [ref=e26]:
+          - heading "Terms & Conditions" [level=2] [ref=e27]
+          - paragraph [ref=e28]: Please read carefully before proceeding
+      - generic [ref=e29]:
+        - paragraph [ref=e30]: "Last updated: April 23, 2026"
+        - paragraph [ref=e31]: By using Powershot (“the Service”), you agree to be bound by these Terms and Conditions. If you do not agree, you must not use the Service.
+        - heading "1. Your Rights to Submitted Content" [level=3] [ref=e32]
+        - paragraph [ref=e33]: By using this application, you represent and warrant that you have all necessary rights, permissions, consents, or lawful authority to upload, submit, convert, process, store, share, export, or otherwise use any content you provide through the Service, including but not limited to screenshots, images, documents, text, PDFs, and other materials (“User Content”).
+        - heading "2. Prohibited Uses" [level=3] [ref=e34]
+        - paragraph [ref=e35]: You agree not to use the Service to upload, convert, reproduce, distribute, store, transmit, export, or create derivative works from any content that infringes or may infringe the intellectual property rights, copyright, trademark rights, privacy rights, publicity rights, or any other legal rights of any third party. This includes, without limitation, copyrighted books, articles, course materials, paid educational content, subscription-only materials, proprietary documents, software interfaces, protected media, or any other content for which you do not have lawful permission to use.
+        - heading "3. Service as a Technical Tool" [level=3] [ref=e36]
+        - paragraph [ref=e37]: The Service is provided solely as a technical tool that processes content submitted by users at their own direction. The Company, its founders, owners, developers, employees, contractors, affiliates, and team members do not review all User Content and do not independently verify whether a user has the legal right to upload or convert any specific material. You acknowledge and agree that you, and not the Company, are solely responsible for the content you submit and for ensuring that your use of the Service complies with all applicable laws, regulations, contractual obligations, and intellectual property rights.
+        - heading "4. No License Granted" [level=3] [ref=e38]
+        - paragraph [ref=e39]: The Company does not claim ownership of third-party content uploaded by users and does not grant users any license to use content belonging to third parties. The fact that the Service is technically capable of converting screenshots or other materials into another format, including PDF or document form, does not mean that such use is lawful or authorized. Users remain solely responsible for determining whether they have the necessary legal rights to use, reproduce, transform, or export the content they submit.
+        - heading "5. Limitation of Liability" [level=3] [ref=e40]
+        - paragraph [ref=e41]: By using the Service, you agree that the Company shall not be liable for any unauthorized, unlawful, infringing, or improper use of the Service by any user. To the maximum extent permitted by applicable law, the Company disclaims all liability arising out of or related to User Content, including any claim that content uploaded, processed, converted, stored, or exported through the Service infringes the rights of any third party. Any legal responsibility arising from such content or its use shall rest exclusively with the user who submitted or used the content.
+        - heading "6. Company's Enforcement Rights" [level=3] [ref=e42]
+        - paragraph [ref=e43]: The Company reserves the right, but not the obligation, to remove content, suspend access, terminate accounts, refuse service, or take any other action it deems appropriate where it reasonably believes that the Service is being used in violation of these Terms, applicable law, or the rights of any third party.
+        - heading "7. Indemnification" [level=3] [ref=e44]
+        - paragraph [ref=e45]: "You agree to indemnify, defend, and hold harmless the Company, its founders, owners, developers, employees, contractors, affiliates, licensors, successors, assigns, and team members from and against any and all claims, demands, actions, proceedings, liabilities, damages, judgments, losses, costs, penalties, fines, and expenses, including reasonable legal fees, arising out of or related to: (a) your User Content; (b) your use or misuse of the Service; (c) your violation of these Terms; or (d) your violation of any law or any third-party right, including intellectual property rights."
+        - heading "8. Data Handling & Privacy" [level=3] [ref=e46]
+        - paragraph [ref=e47]: Images you upload are processed in transit only and are not persistently stored on our servers. Extracted text and note data are stored locally in your browser. The Company does not have access to your local data. By using the Service, you consent to the temporary server-side processing of your images for the purpose of text extraction and note generation.
+        - heading "9. No Warranty" [level=3] [ref=e48]
+        - paragraph [ref=e49]: The Service is provided “as is” and “as available” without warranties of any kind, whether express or implied, including but not limited to implied warranties of merchantability, fitness for a particular purpose, and non-infringement. The Company does not warrant that the Service will be uninterrupted, error-free, or free of harmful components.
+        - heading "10. Modifications" [level=3] [ref=e50]
+        - paragraph [ref=e51]: The Company reserves the right to modify these Terms at any time. Continued use of the Service after changes constitutes acceptance of the revised Terms. It is your responsibility to review these Terms periodically.
+        - heading "11. Governing Law" [level=3] [ref=e52]
+        - paragraph [ref=e53]: These Terms shall be governed by and construed in accordance with applicable law, without regard to conflict of law principles. Any disputes arising from these Terms or your use of the Service shall be resolved in the appropriate courts of competent jurisdiction.
+        - heading "12. Do Not Use If You Lack Rights" [level=3] [ref=e54]
+        - paragraph [ref=e55]: If you do not have the legal right to use, upload, process, convert, reproduce, or export certain content, you must not use the Service for that content.
+      - generic [ref=e56]:
+        - generic [ref=e57] [cursor=pointer]:
+          - checkbox "I have read and agree to the Terms & Conditions" [ref=e58]
+          - checkbox
+          - generic [ref=e59]: I have read and agree to the Terms & Conditions
+        - button "Accept & Proceed" [disabled]:
+          - img
+          - text: Accept & Proceed
+    - button "Choose File" [ref=e60]
+    - generic [ref=e62]:
+      - navigation [ref=e63]:
+        - link "Dashboard" [ref=e64] [cursor=pointer]:
+          - /url: /
+        - img [ref=e65]
+        - generic [ref=e67]: New note
+      - generic [ref=e68]:
+        - heading "Create a new note" [level=1] [ref=e69]
+        - paragraph [ref=e70]: Order is auto-detected from filenames and metadata. Drop, browse, or paste screenshots below to begin.
+      - generic [ref=e71]:
+        - generic [ref=e72]: Note title
+        - textbox "Note title" [ref=e73]:
+          - /placeholder: e.g., Lecture notes — April 22
+      - button "Drop screenshots here to start Drag files, click to browse, or paste directly from your clipboard. We support PNG, JPG, WebP, and HEIC. AI Extraction PDF & DOCX" [ref=e76]:
+        - img [ref=e78]
+        - generic [ref=e81]:
+          - paragraph [ref=e82]: Drop screenshots here to start
+          - paragraph [ref=e83]: Drag files, click to browse, or paste directly from your clipboard. We support PNG, JPG, WebP, and HEIC.
+        - generic [ref=e84]:
+          - generic [ref=e85]:
+            - img [ref=e86]
+            - text: AI Extraction
+          - generic [ref=e89]:
+            - img [ref=e90]
+            - text: PDF & DOCX
+      - generic [ref=e93]:
+        - button "Generate note" [disabled]:
+          - img
+          - text: Generate note
+  - contentinfo [ref=e94]:
+    - generic [ref=e96]:
+      - generic [ref=e97]:
+        - img [ref=e99]
+        - heading "Support Powershot" [level=3] [ref=e101]
+        - paragraph [ref=e102]: Found Powershot useful? Coffee is always welcome ☕
+      - generic [ref=e103]:
+        - generic [ref=e104]:
+          - img [ref=e105]
+          - heading "Support Powershot" [level=3] [ref=e107]
+        - generic [ref=e109]:
+          - button "₿ Crypto" [ref=e110]:
+            - generic [ref=e111]: ₿
+            - text: Crypto
+          - button "P PayPal" [ref=e112]:
+            - generic [ref=e113]: P
+            - text: PayPal
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - generic [ref=e116]: Amount (USD)
+            - generic [ref=e117]:
+              - button "$5" [ref=e118]
+              - button "$10" [ref=e119]
+              - button "$25" [ref=e120]
+              - button "$50" [ref=e121]
+            - spinbutton [ref=e122]
+          - generic [ref=e123]:
+            - generic [ref=e124]: Cryptocurrency
+            - generic [ref=e125]:
+              - button "BTC" [ref=e126]:
+                - generic [ref=e127]: BTC
+              - button "ETH" [ref=e128]:
+                - generic [ref=e129]: ETH
+              - button "USDT" [ref=e130]:
+                - generic [ref=e131]: USDT
+              - button "USDC" [ref=e132]:
+                - generic [ref=e133]: USDC
+              - button "LTC" [ref=e134]:
+                - generic [ref=e135]: LTC
+              - button "SOL" [ref=e136]:
+                - generic [ref=e137]: SOL
+          - button "Donate $10" [ref=e138]:
+            - img
+            - text: Donate $10
+    - generic [ref=e140]:
+      - generic [ref=e141]:
+        - generic [ref=e142]: Powershot
+        - generic [ref=e143]: /
+        - paragraph [ref=e144]: © 2026 All rights reserved.
+      - navigation [ref=e145]:
+        - link "Donate" [ref=e146] [cursor=pointer]:
+          - /url: /#donate
+        - link "Create Note" [ref=e147] [cursor=pointer]:
+          - /url: /new
+        - link "Privacy Policy" [ref=e148] [cursor=pointer]:
+          - /url: /privacy
+  - button "Open Next.js Dev Tools" [ref=e154] [cursor=pointer]:
+    - img [ref=e155]

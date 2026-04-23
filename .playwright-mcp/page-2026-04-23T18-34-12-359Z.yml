@@ -1,0 +1,88 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Powershot Logo" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img "Powershot Logo" [ref=e6]
+      - navigation [ref=e7]:
+        - button "Donate" [ref=e8]:
+          - img [ref=e11]
+        - link "Create new note" [ref=e13] [cursor=pointer]:
+          - /url: /new
+          - generic [ref=e14]: +
+          - generic [ref=e15]: + New Note
+        - button "Switch to dark mode" [ref=e16] [cursor=pointer]:
+          - generic [ref=e17]: Switch to dark mode
+          - generic [ref=e18]:
+            - img [ref=e20]
+            - img [ref=e29]
+  - main [ref=e43]:
+    - generic [ref=e44]:
+      - generic [ref=e46]:
+        - heading "Your notes" [level=1] [ref=e47]
+        - paragraph [ref=e48]: Everything stays local to your browser. Create, edit, and export structured notes from screenshots.
+        - link "+ New Note" [ref=e52] [cursor=pointer]:
+          - /url: /new
+          - generic [ref=e53]: + New Note
+      - generic [ref=e55]:
+        - heading "Recent notes" [level=2] [ref=e56]:
+          - img [ref=e57]
+          - text: Recent notes
+        - paragraph [ref=e61]: Access your previously generated notes. Everything stays local to your browser.
+  - contentinfo [ref=e75]:
+    - generic [ref=e77]:
+      - generic [ref=e78]:
+        - img [ref=e80]
+        - heading "Support Powershot" [level=3] [ref=e82]
+        - paragraph [ref=e83]: Found Powershot useful? Coffee is always welcome ☕
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - img [ref=e86]
+          - heading "Support Powershot" [level=3] [ref=e88]
+        - generic [ref=e90]:
+          - button "₿ Crypto" [ref=e91]:
+            - generic [ref=e92]: ₿
+            - text: Crypto
+          - button "P PayPal" [ref=e93]:
+            - generic [ref=e94]: P
+            - text: PayPal
+        - generic [ref=e95]:
+          - generic [ref=e96]:
+            - generic [ref=e97]: Amount (USD)
+            - generic [ref=e98]:
+              - button "$5" [ref=e99]
+              - button "$10" [ref=e100]
+              - button "$25" [ref=e101]
+              - button "$50" [ref=e102]
+            - spinbutton [ref=e103]
+          - generic [ref=e104]:
+            - generic [ref=e105]: Cryptocurrency
+            - generic [ref=e106]:
+              - button "BTC" [ref=e107]:
+                - generic [ref=e108]: BTC
+              - button "ETH" [ref=e109]:
+                - generic [ref=e110]: ETH
+              - button "USDT" [ref=e111]:
+                - generic [ref=e112]: USDT
+              - button "USDC" [ref=e113]:
+                - generic [ref=e114]: USDC
+              - button "LTC" [ref=e115]:
+                - generic [ref=e116]: LTC
+              - button "SOL" [ref=e117]:
+                - generic [ref=e118]: SOL
+          - button "Donate $10" [ref=e119]:
+            - img
+            - text: Donate $10
+    - generic [ref=e121]:
+      - generic [ref=e122]:
+        - generic [ref=e123]: Powershot
+        - generic [ref=e124]: /
+        - paragraph [ref=e125]: © 2026 All rights reserved.
+      - navigation [ref=e126]:
+        - link "Donate" [ref=e127] [cursor=pointer]:
+          - /url: /#donate
+        - link "Create Note" [ref=e128] [cursor=pointer]:
+          - /url: /new
+        - link "Privacy Policy" [ref=e129] [cursor=pointer]:
+          - /url: /privacy
+  - alert [ref=e130]

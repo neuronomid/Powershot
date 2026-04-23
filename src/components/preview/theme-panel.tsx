@@ -37,11 +37,11 @@ const FONTS: FontChoice[] = [
   "JetBrains Mono",
 ];
 
-const SIZES: { key: BaseSize; label: string }[] = [
-  { key: "small", label: "Small (10 pt)" },
-  { key: "medium", label: "Medium (11 pt)" },
-  { key: "large", label: "Large (12 pt)" },
-  { key: "x-large", label: "X-Large (14 pt)" },
+const SIZES: { key: BaseSize; label: string; short: string }[] = [
+  { key: "small", label: "Small (10 pt)", short: "S" },
+  { key: "medium", label: "Medium (11 pt)", short: "M" },
+  { key: "large", label: "Large (12 pt)", short: "L" },
+  { key: "x-large", label: "X-Large (14 pt)", short: "XL" },
 ];
 
 const SPACINGS: { key: LineSpacing; label: string }[] = [
@@ -84,11 +84,17 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
   useEffect(() => {
     if (!open || !triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
+    const width = Math.min(window.innerWidth - 32, 320);
+    // Right-align to the trigger, but clamp within viewport (min 16px from edges).
+    const rightEdge = Math.max(
+      16,
+      Math.min(window.innerWidth - rect.right, window.innerWidth - width - 16),
+    );
     setPopoverStyle({
       position: "fixed",
       top: rect.bottom + 8,
-      right: window.innerWidth - rect.right,
-      width: Math.min(window.innerWidth - 32, 320),
+      right: rightEdge,
+      width,
     });
   }, [open]);
 
@@ -265,18 +271,19 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
                 <label className="text-xs font-semibold text-muted-foreground">
                   Base size
                 </label>
-                <div className="flex gap-2">
+                <div className="flex gap-1.5">
                   {SIZES.map((s) => (
                     <button
                       key={s.key}
                       onClick={() => update({ baseSize: s.key })}
+                      title={s.label}
                       className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium transition-colors ${
                         theme.baseSize === s.key
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-muted/30 hover:bg-muted/50"
                       }`}
                     >
-                      {s.label}
+                      {s.short}
                     </button>
                   ))}
                 </div>

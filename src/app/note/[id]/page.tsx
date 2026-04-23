@@ -205,7 +205,7 @@ export default function NotePage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 scrollbar-none">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 sm:flex-nowrap sm:overflow-x-auto sm:pb-0 sm:scrollbar-none">
           {/* Sync scroll toggle */}
           <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/50 shrink-0">
             <input
@@ -214,7 +214,8 @@ export default function NotePage() {
               onChange={(e) => setSyncEnabled(e.target.checked)}
               className="size-3.5 accent-primary"
             />
-            Sync scroll
+            <span className="hidden sm:inline">Sync scroll</span>
+            <span className="sm:hidden">Sync</span>
           </label>
 
           <Button

@@ -6,7 +6,7 @@ import { DonateBox } from "@/components/donate/donate-box";
 export function SiteFooter() {
   return (
     <footer className="mt-auto">
-      <div id="donate" className="scroll-mt-24 mx-auto w-full max-w-7xl px-6 py-16">
+      <div id="donate" className="scroll-mt-24 mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="mx-auto max-w-md">
           <div className="mb-8 text-center">
             <div className="mx-auto mb-3 flex size-10 items-center justify-center rounded-full bg-gradient-to-br from-rose-500/10 via-pink-500/10 to-orange-400/10 ring-1 ring-rose-500/20">
@@ -24,13 +24,13 @@ export function SiteFooter() {
       </div>
 
       <div className="border-t border-border/40 bg-card/30 backdrop-blur-sm">
-        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-6 px-6 py-10 text-xs font-medium text-muted-foreground sm:flex-row">
-          <div className="flex items-center gap-2">
+        <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-6 px-4 py-8 text-xs font-medium text-muted-foreground sm:flex-row sm:px-6 sm:py-10">
+          <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-center">
             <span className="font-bold text-foreground/80">Powershot</span>
             <span className="opacity-40">/</span>
             <p>&copy; {new Date().getFullYear()} All rights reserved.</p>
           </div>
-          <nav className="flex items-center gap-8">
+          <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 sm:gap-8">
             <Link
               href="/#donate"
               className="hover:text-primary transition-colors tracking-tight"
