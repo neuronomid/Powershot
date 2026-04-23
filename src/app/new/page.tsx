@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { nanoid } from "nanoid";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Filmstrip } from "@/components/upload/filmstrip";
@@ -18,6 +19,7 @@ import { UploadSurface } from "@/components/upload/upload-surface";
 import { ProgressPanel } from "@/components/pipeline/progress-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { createNote } from "@/lib/note/store";
 import { useBatchPipeline } from "@/lib/pipeline/useBatchPipeline";
 import { detectAndOrder } from "@/lib/upload/order-inference";
 import type {
@@ -28,6 +30,8 @@ import type {
 import { isAcceptedImage, rejectionReason } from "@/lib/upload/validation";
 
 export default function NewNotePage() {
+  const router = useRouter();
+  const [title, setTitle] = useState("");
   const [images, setImages] = useState<StagedImage[]>([]);
   const [autoOrderIds, setAutoOrderIds] = useState<string[]>([]);
   const [confidence, setConfidence] = useState<OrderConfidence>("high");
@@ -36,15 +40,6 @@ export default function NewNotePage() {
   useEffect(() => {
     imagesRef.current = images;
   }, [images]);
-
-  // Revoke object URLs on unmount.
-  useEffect(() => {
-    return () => {
-      for (const img of imagesRef.current) {
-        URL.revokeObjectURL(img.objectUrl);
-      }
-    };
-  }, []);
 
   const { state: pipeline, run, retryJob, reset } = useBatchPipeline();
   const isRunning =
@@ -128,6 +123,20 @@ export default function NewNotePage() {
     [images, retryJob],
   );
 
+  const handleReviewNote = useCallback(async () => {
+    if (!pipeline.result) return;
+    const note = await createNote({
+      title: title.trim() || "Untitled note",
+      images,
+      markdown: pipeline.result.markdown,
+      extractedMarkdown: pipeline.result.markdown,
+      anchors: pipeline.result.anchors,
+      warnings: pipeline.result.warnings,
+      tokenSubsetViolations: pipeline.result.tokenSubsetViolations,
+    });
+    router.push(`/note/${note.id}`);
+  }, [pipeline.result, images, title, router]);
+
   const hasImages = images.length > 0;
   const isReorderedFromAuto =
     hasImages &&
@@ -155,6 +164,24 @@ export default function NewNotePage() {
               or paste screenshots below to begin.
             </p>
           </header>
+
+          {/* Title input */}
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="note-title"
+              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+            >
+              Note title
+            </label>
+            <input
+              id="note-title"
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Lecture notes — April 22"
+              className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-lg font-semibold text-foreground shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+          </div>
 
           {rejections.length > 0 && (
             <Alert
@@ -345,16 +372,12 @@ export default function NewNotePage() {
             {pipeline.result ? (
               <Button
                 type="button"
-                variant="secondary"
-                onClick={() => {
-                  reset();
-                  setImages([]);
-                  setAutoOrderIds([]);
-                  setRejections([]);
-                }}
-                className="h-11 rounded-full px-8 text-base font-bold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]"
+                variant="glossy"
+                onClick={handleReviewNote}
+                className="h-11 rounded-full px-8 text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
-                Start over
+                Review note
+                <ChevronRight className="ml-2 size-5" />
               </Button>
             ) : (
               <Button

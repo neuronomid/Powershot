@@ -5,8 +5,10 @@ Compact guidance for OpenCode sessions working in this repo. When in doubt, trus
 ## Current state
 
 - **Phase 0 (foundation) is complete.** Next.js 16 skeleton, design tokens, route shell, shadcn/ui wired.
-- **Phase 1 (upload + ordering) is in progress.** `/new` has drag-drop/paste, thumbnail grid, filmstrip with drag + keyboard reorder, and order inference. Generate button is stubbed.
-- **No AI, dedup, review, export, or persistence logic yet.** Those land in Phases 2–6.
+- **Phase 1 (upload + ordering) is complete.** `/new` has drag-drop/paste, thumbnail grid, filmstrip with drag + keyboard reorder, and order inference.
+- **Phases 2–3 (extraction + batch pipeline) are complete.** `/api/extract`, `/api/dedup`, `/api/review` are wired; client-side batch orchestrator with concurrency cap, deterministic + semantic dedup, review pass, token-subset guardrail, and per-image progress panel.
+- **Phase 4 (preview + editing) is in progress.** `/note/[id]` has split-pane preview with Tiptap Markdown editor, synchronized scroll, ordering warnings, and revert-to-extracted.
+- **No export, persistence, or theming yet.** Those land in Phases 5–6.
 
 ## Commands
 
@@ -40,11 +42,11 @@ pnpm dev
 | Route | Status | Purpose |
 |-------|--------|---------|
 | `/` | stub | Home / recent notes (Phase 6) |
-| `/new` | active UI | Upload + order (Phase 1); generate stubbed |
-| `/note/[id]` | stub | Preview + export (Phases 4–5) |
+| `/new` | active UI | Upload + order (Phase 1); generate wired |
+| `/note/[id]` | active UI | Preview + editing (Phase 4); export stubbed |
 | `/privacy` | stub | Policy copy (Phase 7) |
 
-API routes: none yet. Planned: `POST /api/extract`, `/api/dedup`, `/api/review`, `GET /api/export`.
+API routes: `POST /api/extract`, `POST /api/dedup`, `POST /api/review` wired. Planned: `GET /api/export`.
 
 ## Load-bearing constraints (never violate locally)
 
