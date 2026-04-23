@@ -24,22 +24,39 @@ function getApiKey(): string {
   return key;
 }
 
-async function api<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
+async function api<T>(
+  path: string,
+  options?: RequestInit,
+  maxRetries = 2,
+): Promise<T> {
+  const url = `${BASE_URL}${path}`;
+  const init: RequestInit = {
     ...options,
     headers: {
       "x-api-key": getApiKey(),
       "Content-Type": "application/json",
       ...(options?.headers ?? {}),
     },
-  });
+  };
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`NowPayments API error ${res.status}: ${text}`);
+  let lastErr: Error | null = null;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, init);
+      if (res.ok) return res.json() as Promise<T>;
+
+      // Retry transient upstream failures; surface client errors immediately.
+      const retryable = res.status === 429 || res.status >= 500;
+      const text = await res.text().catch(() => "");
+      lastErr = new Error(`NowPayments API error ${res.status}: ${text}`);
+      if (!retryable || attempt === maxRetries) throw lastErr;
+    } catch (err) {
+      lastErr = err instanceof Error ? err : new Error(String(err));
+      if (attempt === maxRetries) throw lastErr;
+    }
+    await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
   }
-
-  return res.json() as Promise<T>;
+  throw lastErr ?? new Error("NowPayments request failed");
 }
 
 export type CurrencyInfo = {
@@ -54,11 +71,13 @@ export async function getStatus(): Promise<{ message: string }> {
 }
 
 export async function getCurrencies(): Promise<string[]> {
-  return api("/currencies");
+  const data = await api<{ currencies: string[] }>("/currencies");
+  return data.currencies ?? [];
 }
 
 export async function getFullCurrencies(): Promise<CurrencyInfo[]> {
-  return api("/full-currencies");
+  const data = await api<{ currencies: CurrencyInfo[] }>("/full-currencies");
+  return data.currencies ?? [];
 }
 
 export type EstimateParams = {

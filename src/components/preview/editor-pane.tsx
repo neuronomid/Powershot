@@ -4,6 +4,7 @@ import { forwardRef, useEffect, useMemo, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import { TableKit } from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
 
 import type { ExportTheme } from "@/lib/theme/types";
@@ -103,6 +104,7 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
       extensions: [
         StarterKit,
         Link.configure({ openOnClick: false }),
+        TableKit.configure({ table: { resizable: false } }),
         Markdown.configure({
           html: false,
           tightLists: true,

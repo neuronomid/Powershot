@@ -2,15 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Current state
-
-This repo currently contains **only planning documents** — no code, no `package.json`, no build tooling yet. The two source-of-truth documents are:
-
-- `docs/PRD.md` — what Powershot is and what v1 must do.
-- `docs/Plan.md` — how v1 gets built, sliced into Phases 0–7.
-
-Before making non-trivial product changes, read both. `docs/Plan.md` explicitly distinguishes **product phases** (PRD §12: v1 / v2 / v3) from **development phases** (the slicing of v1 itself in Plan.md) — don't conflate them.
-
 ## What Powershot is
 
 A web app that turns a batch of screenshots into a clean, structured Markdown note exportable as PDF and DOCX. The pipeline is:
@@ -22,48 +13,99 @@ A web app that turns a batch of screenshots into a clean, structured Markdown no
 5. Tiptap split-pane preview with sync scroll; user edits Markdown inline.
 6. Export: PDF via `puppeteer-core` + `@sparticuz/chromium`; DOCX via the `docx` library.
 
-## Load-bearing constraints
+## Current state
 
-These are the constraints that shape the whole codebase. Violating them is never a local fix — it changes the product.
+Phases 0–6 are implemented and shipping. Phase 7 (a11y, perf, eval harnesses, launch polish) is in progress. The v2 roadmap lives in `docs/PRD2.md` and `docs/Plan2.md` — treat those as planning docs, not specs of current behavior. `docs/PRD.md` and `docs/Plan.md` remain the sources of truth for v1 behavior and the dev-phase slicing.
 
-- **No paraphrasing, no invented content.** Every prompt (extraction, dedup, review) forbids adding/removing/rewording user-visible text. The review endpoint enforces a **token-subset guardrail**: the model returns the set of output word tokens, and the server verifies it is a subset of input tokens. Violations are logged and surfaced as a soft warning — flagged, not blocked.
-- **Zero server-side persistence of image or note data.** Images live in memory and in transit only. No disk writes, no Vercel Blob, no logs containing image bytes or extracted text. Note Markdown is stored in the user's browser (`IndexedDB` via `idb` for notes, `localStorage` for preferences).
-- **Per-image serverless calls.** Each extraction is one image per request to stay under Vercel's 4.5 MB body limit and to allow per-image streaming progress. Orchestration happens on the client with a concurrency cap of ~4. No single server function call should exceed ~30 s.
-- **Fallback model chain** configured in OpenRouter: `google/gemini-2.5-pro` → `google/gemini-2.5-flash` → `anthropic/claude-haiku-4-5`.
-- **Runtime choice is per-route and deliberate.** Edge runtime where possible for lower latency; Node runtime where required (Puppeteer export, and SSE if Edge misbehaves). Document the runtime at the top of every route handler.
-
-## Planned stack (not yet installed)
-
-When scaffolding, match what the PRD and Plan specify — don't substitute equivalents without a reason:
-
-- Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, shadcn/ui.
-- `react-dropzone` (uploads), `exifr` (EXIF), Tiptap + a GFM-faithful Markdown extension (editor), `idb` (IndexedDB), `docx` (DOCX export), `puppeteer-core` + `@sparticuz/chromium` (PDF), `remark` + `remark-gfm` + `rehype-stringify` (Markdown → HTML).
-- AI via OpenRouter. `OPENROUTER_API_KEY` is server-side only; wire it through `.env.example` from Phase 0.
-- Hosting: Vercel. `main` auto-deploys.
-- Package manager: `pnpm` (the Plan's deliverable for Phase 0 is `pnpm dev`).
-
-## Route shell
-
-- `/` — home, recent-notes list.
-- `/new` — upload + order + generate.
-- `/note/[id]` — split-pane preview + theme + export.
-
-API routes (per Plan):
-
-- `POST /api/extract` — one image → Markdown (Edge runtime preferred).
-- `POST /api/dedup` — semantic dedup pass (Flash), returns deletion spans only.
-- `POST /api/review` — review pass (Flash), returns revised Markdown + ordering warnings + output-token set for the guardrail.
-- `GET /api/export?format=pdf|docx` — Node runtime; extended timeout; DOCX→PDF fallback path if Puppeteer fails.
-
-## How to proceed when asked to build
-
-The Plan is written so each phase is a **vertical slice** ending in a demoable state. Don't skip ahead — Phase N assumes Phase N-1's deliverable is real. In particular:
-
-- Phase 2 (single-image extraction) is the VLM de-risk; don't couple it to batch/dedup/review work.
-- The token-subset guardrail ships with the review endpoint in Phase 3, not later.
-- Keyboard-reorder parity on the filmstrip is baked in at Phase 1, not retrofitted at Phase 7.
-- Source images are **not** persisted in v1 (deferred to v1.1 per PRD §11). The continue-note flow appends new Markdown; it does not re-open old source images.
+`docs/Plan.md` explicitly distinguishes **product phases** (PRD §12: v1 / v2 / v3) from **development phases** (the slicing of v1 itself into 0–7) — don't conflate them.
 
 ## Commands
 
-No build/test/lint commands exist yet — the repo has no `package.json`. Once Phase 0 lands, this section should document `pnpm dev`, `pnpm build`, `pnpm test`, and how to run a single test, along with the offline eval harnesses planned in Phase 7 (50-note extraction-fidelity benchmark, 100-batch ordering-accuracy benchmark).
+Package manager is **pnpm**. Node 20+.
+
+| command | purpose |
+|---|---|
+| `pnpm dev` | Turbopack dev server on http://localhost:3000 |
+| `pnpm build` / `pnpm start` | production build / run |
+| `pnpm lint` | ESLint (`eslint.config.mjs`, Next core-web-vitals + TS) |
+| `pnpm test` | Vitest (jsdom, `src/**/*.{test,spec}.{ts,tsx}`) |
+| `pnpm test:watch` | Vitest watch mode |
+| `pnpm test:e2e` | Playwright (`tests/e2e`, Chromium, auto-starts dev server on 127.0.0.1) |
+| `pnpm test:all` | Vitest then Playwright |
+
+Run a single Vitest file: `pnpm test src/lib/upload/order-inference.test.ts`. Filter by name: `pnpm test -t "<pattern>"`.
+Run a single Playwright test: `pnpm test:e2e -g "<pattern>"`.
+
+Setup: `pnpm install`, `cp .env.example .env.local`, add `OPENROUTER_API_KEY`.
+
+## Load-bearing constraints
+
+These shape the whole codebase. Violating them is never a local fix — it changes the product.
+
+- **No paraphrasing, no invented content.** Every prompt (extraction, dedup, review) forbids adding/removing/rewording user-visible text. The review endpoint enforces a **token-subset guardrail**: the model returns the set of output word tokens, and the server verifies it is a subset of input tokens. Violations are logged and surfaced as a soft warning — flagged, not blocked.
+- **Zero server-side persistence of image or note data.** Images live in memory and in transit only. No disk writes, no Vercel Blob, no logs containing image bytes or extracted text. Notes live client-side: `IndexedDB` via `idb` for notes (`src/lib/note/db.ts`, `store.ts`), `localStorage` for preferences.
+- **Per-image serverless calls.** One image per extraction request to stay under Vercel's ~4.5 MB body limit and to allow per-image streaming progress. Client orchestrates with a concurrency cap of ~4 (`src/lib/pipeline/batch.ts`, `useBatchPipeline.ts`). No single server call should exceed ~30 s.
+- **Fallback model chain** configured in OpenRouter: `google/gemini-2.5-pro` → `google/gemini-2.5-flash` → `anthropic/claude-haiku-4-5`. Central wrapper: `src/lib/ai/openrouter.ts`; prompts: `src/lib/ai/prompts.ts`.
+- **Runtime is per-route and deliberate.** Each API route declares `export const runtime` at the top. Edge for the three AI routes; Node for export (Puppeteer requires it, `maxDuration = 60`). Don't change a runtime without a reason.
+- **`OPENROUTER_API_KEY` is server-side only.** Never prefix with `NEXT_PUBLIC_`.
+- **Source images are not persisted in v1.** The continue-note flow appends new Markdown; it does not re-open old source images. This is deferred to v1.1 per PRD §11.
+
+## Architecture map
+
+Single Next.js 16 App Router app (not a monorepo). React 19, TypeScript strict, Tailwind v4 (`@tailwindcss/postcss`, global CSS `src/app/globals.css`), shadcn/ui in `radix-nova` style with `lucide` icons (`components.json`). Path alias `@/*` → `src/*`.
+
+Routes:
+
+| path | purpose |
+|---|---|
+| `/` | home, recent-notes list |
+| `/new` | upload + order + generate |
+| `/note/[id]` | split-pane preview, edit, export, theme |
+| `/privacy` | full privacy policy |
+| `/donate` | crypto donation (v2 addition) |
+
+API routes (all under `src/app/api/*/route.ts`):
+
+| path | runtime | purpose |
+|---|---|---|
+| `POST /api/extract` | Edge | one image → Markdown |
+| `POST /api/dedup` | Edge | semantic dedup (Flash), returns deletion spans only |
+| `POST /api/review` | Edge | review pass (Flash), returns revised Markdown + ordering warnings + output-token set for guardrail |
+| `POST /api/export` | Node | PDF (Puppeteer) / DOCX; includes DOCX→PDF fallback if Puppeteer fails |
+| `POST /api/donate` | — | donation flow (v2) |
+
+Library layout under `src/lib/`:
+
+- `ai/` — OpenRouter client + all prompts.
+- `upload/` — file validation, filename-timestamp parsing, order inference cascade, image resize. Pure functions with colocated `*.test.ts`.
+- `pipeline/` — batch orchestration and the `useBatchPipeline` React hook (client-side concurrency cap).
+- `dedup/` — deterministic longest-common-suffix/prefix dedup (stage 1 of the two-stage dedup).
+- `note/` — IndexedDB persistence (`idb`), note store, types.
+- `export/` — Markdown → themed HTML (for Puppeteer) and Markdown → DOCX.
+- `theme/` — preset definitions and localStorage persistence.
+- `eval/` — offline `fidelity-harness` (token-overlap) and `ordering-harness` (Kendall-tau + exact-position). Run via Vitest or a standalone script.
+
+Component layout under `src/components/`: `upload/`, `pipeline/`, `preview/`, `donate/`, plus shadcn primitives in `ui/`. Top-level pieces: `site-header`, `site-footer`, `theme-provider`, `theme-toggle`, `error-boundary`, `debug-panel`, `terms-acceptance`.
+
+## Phase discipline (when adding features)
+
+The Plan slices v1 into vertical, demoable phases. Don't skip ahead — Phase N assumes N-1 is real. Key pre-baked decisions that aren't meant to be retrofitted:
+
+- Phase 2 (single-image extraction) is the VLM de-risk; keep it decoupled from batch/dedup/review.
+- Phase 3 ships the review endpoint together with the token-subset guardrail — they're a pair.
+- Keyboard-reorder parity on the filmstrip was baked in at Phase 1.
+
+## Deploy
+
+Vercel; `main` auto-deploys. Set `OPENROUTER_API_KEY` in Project Settings. `/api/export` must remain Node runtime with a 60s max duration for Puppeteer.
+
+## Sources of truth
+
+| file | what it decides |
+|---|---|
+| `docs/PRD.md` | v1 product spec |
+| `docs/Plan.md` | v1 development phases (0–7) |
+| `docs/PRD2.md`, `docs/Plan2.md` | v2 roadmap — planning, not current behavior |
+| `AGENTS.md` | Compact guidance (OpenCode-oriented), overlaps with this file |
+| `package.json` | exact deps and scripts |
+| `components.json` | shadcn config |

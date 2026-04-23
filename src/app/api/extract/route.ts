@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     console.error("[api/extract] Extraction failed:", message);
     return Response.json(
       { error: "Extraction failed. Please try again later." },
-      { status: 500 },
+      { status: 502 },
     );
   }
 }
