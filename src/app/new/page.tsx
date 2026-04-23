@@ -43,7 +43,8 @@ export default function NewNotePage() {
   }, [images]);
 
   const { state: pipeline, run, retryJob, reset } = useBatchPipeline();
-  const debug = useDebugPanel();
+  const { log: debugLog, clear: debugClear, entries: debugEntries } =
+    useDebugPanel();
   const isRunning =
     pipeline.stage === "extracting" ||
     pipeline.stage === "deduping" ||
@@ -115,18 +116,20 @@ export default function NewNotePage() {
   const handleGenerate = useCallback(async () => {
     if (images.length === 0) return;
     reset();
-    debug.clear();
+    debugClear();
     await run(images);
-  }, [images, reset, run, debug]);
+  }, [images, reset, run, debugClear]);
 
   useEffect(() => {
     if (pipeline.timing) {
-      debug.log("Extraction", pipeline.timing.extractionMs);
-      debug.log("Dedup", pipeline.timing.dedupMs);
-      debug.log("Review", pipeline.timing.reviewMs);
-      debug.log("Total", pipeline.timing.totalMs);
+      debugLog("Extraction", pipeline.timing.extractionMs);
+      debugLog("Dedup", pipeline.timing.dedupMs);
+      debugLog("Review", pipeline.timing.reviewMs);
+      debugLog("Total", pipeline.timing.totalMs);
     }
-  }, [pipeline.timing, debug]);
+    // debugLog is a stable callback; only react to new timing objects.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pipeline.timing]);
 
   const handleRetry = useCallback(
     (imageId: string) => {
@@ -425,7 +428,7 @@ export default function NewNotePage() {
             )}
           </div>
 
-          <DebugPanel entries={debug.entries} onClear={debug.clear} />
+          <DebugPanel entries={debugEntries} onClear={debugClear} />
         </div>
       )}
     </UploadSurface>

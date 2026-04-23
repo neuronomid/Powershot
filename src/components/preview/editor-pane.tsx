@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useEffect, useMemo } from "react";
+import { forwardRef, useEffect, useMemo, useRef } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
@@ -96,6 +96,7 @@ function useEditorTheme(theme?: ExportTheme) {
 export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
   function EditorPane({ markdown, onChange, onFocusChange, theme }, ref) {
     const themeCss = useEditorTheme(theme);
+    const isUpdatingFromProp = useRef(false);
 
     const editor = useEditor({
       immediatelyRender: false,
@@ -117,6 +118,7 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
         },
       },
       onUpdate: ({ editor }) => {
+        if (isUpdatingFromProp.current) return;
         const storage = editor.storage as unknown as {
           markdown: { getMarkdown: () => string };
         };
@@ -134,7 +136,9 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
         };
         const current = storage.markdown.getMarkdown();
         if (current !== markdown) {
+          isUpdatingFromProp.current = true;
           editor.commands.setContent(markdown);
+          isUpdatingFromProp.current = false;
         }
       }
     }, [markdown, editor]);

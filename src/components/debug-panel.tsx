@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Timer } from "lucide-react";
 
 export type DebugTiming = {
@@ -29,10 +29,9 @@ export function useDebugPanel() {
 
   const clear = useCallback(() => setEntries([]), []);
 
-  return useMemo(
-    () => ({ open, setOpen, entries, log, clear }),
-    [open, entries, log, clear],
-  );
+  // Return plain object (not memoised) so callers never treat the container
+  // as a stable dependency while the inner callbacks *are* stable.
+  return { open, setOpen, entries, log, clear };
 }
 
 export function DebugPanel({

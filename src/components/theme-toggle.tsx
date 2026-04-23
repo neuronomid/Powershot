@@ -3,27 +3,25 @@
 import { useTheme } from "next-themes";
 import { useEffect, useState, useRef } from "react";
 
-const TRANSITION_DURATION = 500;
+const LIGHT_BG = "oklch(0.99 0.01 260)";
+const DARK_BG = "oklch(0.08 0.02 260)";
+const DURATION = 350;
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Required to avoid hydration mismatch with next-themes
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
   const isDark = mounted && resolvedTheme === "dark";
 
   const toggleTheme = () => {
-    if (
-      !(document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> } }).startViewTransition ||
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       setTheme(isDark ? "light" : "dark");
       return;
     }
@@ -33,46 +31,42 @@ export function ThemeToggle() {
     const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
 
     const goingDark = !isDark;
-    const html = document.documentElement;
+    const targetBg = goingDark ? DARK_BG : LIGHT_BG;
+    const el = overlayRef.current;
+    if (!el) return;
 
-    // Lock button during transition
     setIsTransitioning(true);
 
-    // Add direction class so CSS can stack the correct pseudo-element on top
-    html.classList.add(goingDark ? "vt-going-dark" : "vt-going-light");
+    const maxDist = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+    const scale = Math.ceil(maxDist / 2) + 2;
 
-    const transition = (document as Document & { startViewTransition?: (cb: () => void) => { ready: Promise<void>; finished: Promise<void> } }).startViewTransition!(() => {
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.backgroundColor = targetBg;
+    el.style.transform = "translate(-50%, -50%) scale(0)";
+    el.style.transition = "none";
+
+    // Force reflow so the reset takes effect before expansion
+    void el.offsetWidth;
+
+    el.style.transition = `transform ${DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+    el.style.transform = `translate(-50%, -50%) scale(${scale})`;
+
+    const finish = () => {
       setTheme(goingDark ? "dark" : "light");
-    });
-
-    transition.ready.then(() => {
-      const radius = Math.hypot(
-        Math.max(x, window.innerWidth - x),
-        Math.max(y, window.innerHeight - y)
-      );
-
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${radius}px at ${x}px ${y}px)`,
-      ];
-
-      document.documentElement.animate(
-        {
-          clipPath: goingDark ? clipPath : [...clipPath].reverse(),
-        },
-        {
-          duration: TRANSITION_DURATION,
-          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-          pseudoElement: goingDark
-            ? "::view-transition-new(root)"
-            : "::view-transition-old(root)",
-        }
-      );
-    });
-
-    transition.finished.finally(() => {
-      html.classList.remove("vt-going-dark", "vt-going-light");
+      el.style.transition = "none";
+      el.style.transform = "translate(-50%, -50%) scale(0)";
       setIsTransitioning(false);
+    };
+
+    const timer = setTimeout(finish, DURATION + 50);
+    el.addEventListener("transitionend", function handler() {
+      el.removeEventListener("transitionend", handler);
+      clearTimeout(timer);
+      finish();
     });
   };
 
@@ -89,6 +83,18 @@ export function ThemeToggle() {
 
   return (
     <>
+      {/* Lightweight circular wipe overlay — uses only transform for GPU smoothness */}
+      <div
+        ref={overlayRef}
+        aria-hidden="true"
+        className="pointer-events-none fixed z-[9999] rounded-full will-change-transform"
+        style={{
+          width: "4px",
+          height: "4px",
+          transform: "translate(-50%, -50%) scale(0)",
+        }}
+      />
+
       {/* Toggle Button */}
       <button
         ref={buttonRef}
@@ -117,7 +123,7 @@ export function ThemeToggle() {
           <div
             className={[
               "absolute inset-0 flex items-center justify-center",
-              "transition-all duration-700",
+              "transition-all duration-500",
               isDark
                 ? "opacity-0 scale-50 rotate-[120deg]"
                 : "opacity-100 scale-100 rotate-0",
@@ -130,21 +136,8 @@ export function ThemeToggle() {
               fill="none"
               className="overflow-visible"
             >
-              {/* Soft outer glow */}
-              <circle
-                cx="12"
-                cy="12"
-                r="9"
-                className="fill-amber-400/20"
-              />
-              {/* Sun core */}
-              <circle
-                cx="12"
-                cy="12"
-                r="5"
-                className="fill-amber-500"
-              />
-              {/* Rotating rays */}
+              <circle cx="12" cy="12" r="9" className="fill-amber-400/20" />
+              <circle cx="12" cy="12" r="5" className="fill-amber-500" />
               <g className="origin-center animate-sun-spin">
                 {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
                   <line
@@ -168,7 +161,7 @@ export function ThemeToggle() {
           <div
             className={[
               "absolute inset-0 flex items-center justify-center",
-              "transition-all duration-700",
+              "transition-all duration-500",
               isDark
                 ? "opacity-100 scale-100 rotate-0"
                 : "opacity-0 scale-50 -rotate-[120deg]",
@@ -181,23 +174,19 @@ export function ThemeToggle() {
               fill="none"
               className="overflow-visible"
             >
-              {/* Moon glow */}
               <path
                 d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
                 className="fill-indigo-300/15"
                 transform="scale(1.3) translate(-3.6, -3.6)"
               />
-              {/* Moon body */}
               <path
                 d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"
                 className="fill-indigo-300"
               />
-              {/* Craters */}
               <circle cx="9" cy="9" r="1.1" className="fill-indigo-400/35" />
               <circle cx="14.5" cy="13" r="0.9" className="fill-indigo-400/35" />
               <circle cx="11" cy="16" r="0.7" className="fill-indigo-400/35" />
               <circle cx="16" cy="9.5" r="0.6" className="fill-indigo-400/25" />
-              {/* Twinkling stars */}
               <g>
                 <circle cx="3" cy="7" r="0.5" className="fill-indigo-200 animate-twinkle" style={{ animationDelay: "0s" }} />
                 <circle cx="20" cy="6" r="0.5" className="fill-indigo-200 animate-twinkle" style={{ animationDelay: "0.5s" }} />
