@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Download,
   FileText,
@@ -60,6 +61,8 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
   const [open, setOpen] = useState(false);
   const [exporting, setExporting] = useState<"pdf" | "docx" | null>(null);
   const [fallbackWarning, setFallbackWarning] = useState(false);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({});
 
   const update = useCallback(
     (patch: Partial<ExportTheme>) => {
@@ -78,6 +81,17 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
     },
     [onChange],
   );
+
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setPopoverStyle({
+      position: "fixed",
+      top: rect.bottom + 8,
+      right: window.innerWidth - rect.right,
+      width: Math.min(window.innerWidth - 32, 320),
+    });
+  }, [open]);
 
   const handleExport = useCallback(
     async (format: "pdf" | "docx") => {
@@ -125,7 +139,7 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
   );
 
   return (
-    <div className="relative">
+    <div ref={triggerRef}>
       {/* Export buttons */}
       <div className="flex items-center gap-2">
         <Button
@@ -168,14 +182,14 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
         </div>
       )}
 
-      {/* Theme panel popover */}
-      {open && (
+      {/* Theme panel popover — portaled to body to escape overflow clipping */}
+      {open && createPortal(
         <>
           <div
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <Card className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] sm:w-80 shadow-xl">
+          <Card style={popoverStyle} className="z-50 shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Palette className="size-4 text-muted-foreground" />
@@ -294,7 +308,8 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
               </div>
             </CardContent>
           </Card>
-        </>
+        </>,
+        document.body,
       )}
     </div>
   );
