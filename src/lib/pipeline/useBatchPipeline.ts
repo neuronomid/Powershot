@@ -12,6 +12,7 @@ const initialState: PipelineState = {
   jobs: [],
   result: null,
   error: null,
+  timing: null,
 };
 
 export function useBatchPipeline() {
@@ -53,7 +54,10 @@ export function useBatchPipeline() {
         jobs,
         result: null,
         error: null,
+        timing: null,
       });
+
+      const t0 = performance.now();
 
       try {
         const result = await runBatchPipeline(images, {
@@ -70,6 +74,8 @@ export function useBatchPipeline() {
           },
         });
 
+        const totalMs = Math.round(performance.now() - t0);
+
         setState((prev) => ({
           ...prev,
           stage: "completed",
@@ -77,6 +83,12 @@ export function useBatchPipeline() {
             j.status !== "failed" ? { ...j, status: "done" as const } : j,
           ),
           result,
+          timing: {
+            extractionMs: result.timing?.extractionMs ?? 0,
+            dedupMs: result.timing?.dedupMs ?? 0,
+            reviewMs: result.timing?.reviewMs ?? 0,
+            totalMs,
+          },
         }));
       } catch (err) {
         setState((prev) => ({

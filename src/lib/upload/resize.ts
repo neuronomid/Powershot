@@ -4,9 +4,9 @@
  */
 export function resizeImageToDataUrl(
   file: File,
-  opts: { maxWidth?: number; maxHeight?: number; quality?: number } = {},
+  opts: { maxWidth?: number; maxHeight?: number; quality?: number; maxBytes?: number } = {},
 ): Promise<string> {
-  const { maxWidth = 1600, maxHeight = 1600, quality = 0.85 } = opts;
+  const { maxWidth = 1600, maxHeight = 1600, quality = 0.85, maxBytes = 4_000_000 } = opts;
 
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -28,6 +28,18 @@ export function resizeImageToDataUrl(
       ctx.drawImage(img, 0, 0, width, height);
 
       const dataUrl = canvas.toDataURL("image/jpeg", quality);
+
+      // Guardrail: ensure we stay well under Vercel's ~4.5 MB body limit.
+      const header = "data:image/jpeg;base64,";
+      const payloadBytes = Math.ceil((dataUrl.length - header.length) * 0.75);
+      if (payloadBytes > maxBytes) {
+        return reject(
+          new Error(
+            `Resized image still too large (${Math.round(payloadBytes / 1_000_000)} MB). Try a smaller screenshot or lower quality.`,
+          ),
+        );
+      }
+
       resolve(dataUrl);
     };
     img.onerror = () => reject(new Error("Failed to decode image for resize"));

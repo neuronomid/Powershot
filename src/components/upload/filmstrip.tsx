@@ -7,6 +7,7 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -16,6 +17,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { X } from "lucide-react";
+import { useRef, useState } from "react";
 
 import { Thumbnail } from "@/components/upload/thumbnail";
 import { Button } from "@/components/ui/button";
@@ -32,6 +34,8 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const liveRef = useRef<HTMLDivElement>(null);
 
   const moveImage = (from: number, to: number) => {
     if (from === to || from < 0 || to < 0 || from >= images.length || to >= images.length) {
@@ -40,7 +44,12 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
     onReorder(arrayMove(images, from, to));
   };
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const from = images.findIndex((i) => i.id === active.id);
@@ -50,22 +59,38 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-      <SortableContext items={images.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
-        <ol className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4" role="list">
-          {images.map((img, idx) => (
-            <FilmstripItem
-              key={img.id}
-              image={img}
-              index={idx}
-              imageCount={images.length}
-              onMove={moveImage}
-              onRemove={() => onRemove(img.id)}
-            />
-          ))}
-        </ol>
-      </SortableContext>
-    </DndContext>
+    <>
+      <div ref={liveRef} aria-live="polite" aria-atomic="true" className="sr-only">
+        {activeId
+          ? `Dragging ${images.find((i) => i.id === activeId)?.file.name ?? "image"}`
+          : ""}
+      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={images.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
+          <ol
+            className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4"
+            role="list"
+            aria-label="Screenshot order. Use arrow keys or drag to reorder."
+          >
+            {images.map((img, idx) => (
+              <FilmstripItem
+                key={img.id}
+                image={img}
+                index={idx}
+                imageCount={images.length}
+                onMove={moveImage}
+                onRemove={() => onRemove(img.id)}
+              />
+            ))}
+          </ol>
+        </SortableContext>
+      </DndContext>
+    </>
   );
 }
 
@@ -86,7 +111,13 @@ function FilmstripItem({
 }: FilmstripItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: image.id,
+    transition: {
+      duration: 250,
+      easing: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+    },
   });
+
+  const dragHandleRef = useRef<HTMLButtonElement>(null);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -101,6 +132,10 @@ function FilmstripItem({
     event.preventDefault();
     const target = previous ? Math.max(0, index - 1) : Math.min(imageCount - 1, index + 1);
     onMove(index, target);
+    // Return focus to the moved item after the state update flushes.
+    requestAnimationFrame(() => {
+      dragHandleRef.current?.focus();
+    });
   };
 
   return (
@@ -110,7 +145,7 @@ function FilmstripItem({
       className={cn(
         "group relative flex flex-col gap-2 rounded-xl border border-border bg-card p-3",
         "focus-within:ring-2 focus-within:ring-ring",
-        isDragging && "z-10 opacity-80 shadow-lg",
+        isDragging && "z-10 opacity-90 shadow-2xl scale-[1.02] ring-2 ring-primary/30",
       )}
     >
       <div className="flex items-center justify-between px-1">
@@ -141,6 +176,7 @@ function FilmstripItem({
       </div>
 
       <button
+        ref={dragHandleRef}
         type="button"
         {...attributes}
         {...listeners}

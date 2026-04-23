@@ -60,8 +60,22 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
       return (
         <div
           ref={ref}
-          className="flex-1 overflow-y-auto rounded-xl border border-border bg-muted/20 animate-pulse"
-        />
+          className="flex-1 overflow-y-auto rounded-xl border border-border bg-muted/20"
+        >
+          <div className="space-y-4 p-6">
+            <div className="h-8 w-3/4 rounded-lg bg-muted animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded bg-muted animate-pulse" />
+              <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+              <div className="h-4 w-4/6 rounded bg-muted animate-pulse" />
+            </div>
+            <div className="h-6 w-1/2 rounded-lg bg-muted animate-pulse" />
+            <div className="space-y-2">
+              <div className="h-4 w-full rounded bg-muted animate-pulse" />
+              <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+            </div>
+          </div>
+        </div>
       );
     }
 

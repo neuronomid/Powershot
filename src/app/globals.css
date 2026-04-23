@@ -85,10 +85,10 @@
   --muted-foreground: oklch(0.65 0.05 260);
   --accent: oklch(0.18 0.04 260);
   --accent-foreground: oklch(0.92 0.02 260);
-  --destructive: oklch(0.55 0.18 25);
-  --border: oklch(0.22 0.04 260);
-  --input: oklch(0.22 0.04 260);
-  --ring: oklch(0.65 0.18 260 / 30%);
+  --destructive: oklch(0.60 0.20 25);
+  --border: oklch(0.30 0.05 260);
+  --input: oklch(0.30 0.05 260);
+  --ring: oklch(0.65 0.18 260 / 40%);
 }
 
 @layer base {

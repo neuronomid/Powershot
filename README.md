@@ -6,7 +6,7 @@ See [`docs/PRD.md`](./docs/PRD.md) for the product spec and [`docs/Plan.md`](./d
 
 ## Current status
 
-**Phase 1 — Upload & ordering is in progress.** `/new` supports drag/drop, paste, bulk upload, validation, auto-ordering, thumbnails, and filmstrip reorder. Generate is still stubbed; AI, export, and persistence land in later phases.
+**Phase 7 — Polish, a11y, performance, launch is in progress.** All core features (upload, ordering, extraction, dedup, review, preview, editing, export, theming, local history, continue-note) are implemented. This phase focuses on accessibility audits, micro-interactions, performance tuning, privacy policy, eval harnesses, and launch readiness.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ See [`docs/PRD.md`](./docs/PRD.md) for the product spec and [`docs/Plan.md`](./d
 
 ```bash
 pnpm install
-cp .env.example .env.local   # leave OPENROUTER_API_KEY blank until Phase 2
+cp .env.example .env.local   # add OPENROUTER_API_KEY for extraction to work
 pnpm dev
 ```
 
@@ -25,37 +25,79 @@ App runs at http://localhost:3000.
 
 ## Scripts
 
-| command        | what it does                                  |
-| -------------- | --------------------------------------------- |
-| `pnpm dev`     | start the Turbopack dev server                |
-| `pnpm build`   | production build                              |
-| `pnpm start`   | run the production build locally              |
-| `pnpm lint`    | ESLint across the project                     |
-| `pnpm test`    | Vitest unit/component tests                   |
-| `pnpm test:e2e` | Playwright browser tests                     |
-| `pnpm test:all` | Vitest followed by Playwright                |
+| command         | what it does                                  |
+| --------------- | --------------------------------------------- |
+| `pnpm dev`      | start the Turbopack dev server                |
+| `pnpm build`    | production build                              |
+| `pnpm start`    | run the production build locally              |
+| `pnpm lint`     | ESLint across the project                     |
+| `pnpm test`     | Vitest unit/component tests                   |
+| `pnpm test:e2e` | Playwright browser tests                      |
+| `pnpm test:all` | Vitest followed by Playwright                 |
 
 ## Routes
 
 | path           | status  | purpose                                |
 | -------------- | ------- | -------------------------------------- |
-| `/`            | stub    | home, recent-notes list (Phase 6)      |
-| `/new`         | active  | upload + ordering UI (Phase 1); generate is stubbed |
-| `/note/[id]`   | stub    | split-pane preview + export (Phase 4–5) |
-| `/privacy`     | stub    | full copy lands in Phase 7             |
+| `/`            | active  | home, recent-notes list (Phase 6)      |
+| `/new`         | active  | upload + ordering + generation UI      |
+| `/note/[id]`   | active  | split-pane preview + editing + export  |
+| `/privacy`     | active  | full privacy policy (Phase 7)          |
 
-API routes land starting Phase 2 (`/api/extract`), with `/api/dedup`, `/api/review`, and `/api/export` following. Runtime choice (Edge vs Node) is documented at the top of each handler.
+API routes:
+
+| path              | runtime | purpose                          |
+| ----------------- | ------- | -------------------------------- |
+| `POST /api/extract`   | Edge  | single-image VLM extraction      |
+| `POST /api/dedup`     | Edge  | semantic dedup pass              |
+| `POST /api/review`    | Edge  | review + token-subset guardrail  |
+| `POST /api/export`    | Node  | PDF (Puppeteer) / DOCX export    |
 
 ## Environment
 
-`OPENROUTER_API_KEY` — **server-side only**, never prefixed with `NEXT_PUBLIC_`. Required from Phase 2 onward.
+`OPENROUTER_API_KEY` — **server-side only**, never prefixed with `NEXT_PUBLIC_`. Required for extraction, dedup, and review endpoints.
 
 ## Deploy
 
-Hosted on Vercel. `main` auto-deploys. Set `OPENROUTER_API_KEY` in the Vercel project settings once the API routes land.
+Hosted on Vercel. `main` auto-deploys.
+
+### Vercel setup checklist
+
+1. Set `OPENROUTER_API_KEY` in Project Settings → Environment Variables.
+2. Ensure `/api/export` stays on Node runtime (Puppeteer requires it).
+3. For Puppeteer on Vercel, ensure the `@sparticuz/chromium` package is installed and the function max duration is set to 60 s.
+4. No additional build settings are required; Next.js builds out of the box.
 
 ## Stack
 
 Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, shadcn/ui (Radix base), next-themes for dark mode.
 
-> Note: the Plan targets Next.js 15, but Next.js 16 is the current stable as of project start and is fully backwards-compatible with the App Router patterns the Plan specifies.
+## Eval harnesses
+
+Offline benchmark harnesses live in `src/lib/eval/`:
+
+- **`fidelity-harness.ts`** — token-overlap scoring for extraction accuracy against a ground-truth reference set.
+- **`ordering-harness.ts`** — Kendall-tau and exact-position accuracy for the order-inference cascade.
+
+These are designed to run in Vitest or a standalone Node script, not as live telemetry.
+
+Example usage in a test file:
+
+```ts
+import { runFidelityHarness } from "@/lib/eval/fidelity-harness";
+
+const results = runFidelityHarness([
+  {
+    id: "fixture-1",
+    name: "Simple paragraph",
+    referenceMarkdown: "Hello world",
+    extractedMarkdown: "Hello world",
+  },
+]);
+
+console.log(results.averageF1);
+```
+
+## Privacy
+
+Powershot stores nothing on our servers. Images are processed in memory and in transit only. Notes and preferences live in your browser (IndexedDB + localStorage). See the full policy at `/privacy`.

@@ -28,6 +28,7 @@ import type {
   StagedImage,
 } from "@/lib/upload/types";
 import { isAcceptedImage, rejectionReason } from "@/lib/upload/validation";
+import { DebugPanel, useDebugPanel } from "@/components/debug-panel";
 
 export default function NewNotePage() {
   const router = useRouter();
@@ -42,6 +43,7 @@ export default function NewNotePage() {
   }, [images]);
 
   const { state: pipeline, run, retryJob, reset } = useBatchPipeline();
+  const debug = useDebugPanel();
   const isRunning =
     pipeline.stage === "extracting" ||
     pipeline.stage === "deduping" ||
@@ -113,8 +115,18 @@ export default function NewNotePage() {
   const handleGenerate = useCallback(async () => {
     if (images.length === 0) return;
     reset();
+    debug.clear();
     await run(images);
-  }, [images, reset, run]);
+  }, [images, reset, run, debug]);
+
+  useEffect(() => {
+    if (pipeline.timing) {
+      debug.log("Extraction", pipeline.timing.extractionMs);
+      debug.log("Dedup", pipeline.timing.dedupMs);
+      debug.log("Review", pipeline.timing.reviewMs);
+      debug.log("Total", pipeline.timing.totalMs);
+    }
+  }, [pipeline.timing, debug]);
 
   const handleRetry = useCallback(
     (imageId: string) => {
@@ -392,6 +404,8 @@ export default function NewNotePage() {
               </Button>
             )}
           </div>
+
+          <DebugPanel entries={debug.entries} onClear={debug.clear} />
         </div>
       )}
     </UploadSurface>

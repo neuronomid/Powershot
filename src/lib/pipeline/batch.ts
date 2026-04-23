@@ -5,6 +5,7 @@ import type {
   ChunkAnchor,
   OrderingWarning,
   PipelineResult,
+  PipelineTiming,
 } from "./types";
 
 function buildAnchors(chunks: string[], imageIds: string[]): ChunkAnchor[] {
@@ -75,7 +76,7 @@ export type PipelineCallbacks = {
 export async function runBatchPipeline(
   images: StagedImage[],
   options: { signal?: AbortSignal; callbacks?: PipelineCallbacks } = {},
-): Promise<PipelineResult> {
+): Promise<PipelineResult & { timing?: PipelineTiming }> {
   const { signal, callbacks } = options;
 
   const extractionResults = new Map<
@@ -85,6 +86,7 @@ export async function runBatchPipeline(
   const failedImages = new Set<string>();
 
   // ─── Phase 1: Extract ───
+  const tExtract0 = performance.now();
   await runWithConcurrency(images, 4, async (image) => {
     if (signal?.aborted) return;
     callbacks?.onExtractStart?.(image.id);
@@ -117,6 +119,7 @@ export async function runBatchPipeline(
       callbacks?.onExtractError?.(image.id, message);
     }
   });
+  const extractionMs = Math.round(performance.now() - tExtract0);
 
   const successfulImages = images.filter((img) => !failedImages.has(img.id));
 
@@ -128,6 +131,7 @@ export async function runBatchPipeline(
   const imageIds = successfulImages.map((img) => img.id);
 
   // ─── Phase 2: Deterministic dedup ───
+  const tDedup0 = performance.now();
   const dedupedChunks = dedupChunkList(chunks);
   let anchors = buildAnchors(dedupedChunks, imageIds);
 
@@ -195,12 +199,14 @@ export async function runBatchPipeline(
       console.error("[pipeline] Semantic dedup failed:", err);
     }
   }
+  const dedupMs = Math.round(performance.now() - tDedup0);
 
   if (signal?.aborted) {
     throw new Error("Aborted");
   }
 
   // ─── Phase 4: Review ───
+  const tReview0 = performance.now();
   const combinedMarkdown = dedupedChunks.join("\n\n");
 
   let finalMarkdown = combinedMarkdown;
@@ -229,11 +235,18 @@ export async function runBatchPipeline(
   } catch (err) {
     console.error("[pipeline] Review failed:", err);
   }
+  const reviewMs = Math.round(performance.now() - tReview0);
 
   return {
     markdown: finalMarkdown,
     warnings,
     tokenSubsetViolations,
     anchors,
+    timing: {
+      extractionMs,
+      dedupMs,
+      reviewMs,
+      totalMs: extractionMs + dedupMs + reviewMs,
+    },
   };
 }

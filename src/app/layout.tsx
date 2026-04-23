@@ -21,14 +21,19 @@ export const metadata: Metadata = {
   title: "Powershot — Screenshots into structured notes",
   description:
     "Turn a stack of screenshots into a clean, structured, downloadable note. PDF and DOCX, never paraphrased.",
-  manifest: "/favicon/site.webmanifest",
+  manifest: "/site.webmanifest?v=3",
   icons: {
     icon: [
-      { url: "/favicon/favicon.ico", sizes: "any" },
-      { url: "/favicon/favicon.svg", type: "image/svg+xml" },
-      { url: "/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon.ico?v=3", sizes: "any" },
+      { url: "/favicon.svg?v=3", type: "image/svg+xml" },
+      {
+        url: "/favicon-96x96.png?v=3",
+        sizes: "96x96",
+        type: "image/png",
+      },
     ],
-    apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180" }],
+    shortcut: ["/favicon.ico?v=3"],
+    apple: [{ url: "/apple-touch-icon.png?v=3", sizes: "180x180" }],
   },
 };
 

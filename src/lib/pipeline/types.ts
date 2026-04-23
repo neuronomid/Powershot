@@ -42,9 +42,17 @@ export type PipelineResult = {
   anchors: ChunkAnchor[];
 };
 
+export type PipelineTiming = {
+  extractionMs: number;
+  dedupMs: number;
+  reviewMs: number;
+  totalMs: number;
+};
+
 export type PipelineState = {
   stage: PipelineStage;
   jobs: ExtractionJob[];
   result: PipelineResult | null;
   error: string | null;
+  timing: PipelineTiming | null;
 };

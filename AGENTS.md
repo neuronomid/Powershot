@@ -4,11 +4,8 @@ Compact guidance for OpenCode sessions working in this repo. When in doubt, trus
 
 ## Current state
 
-- **Phase 0 (foundation) is complete.** Next.js 16 skeleton, design tokens, route shell, shadcn/ui wired.
-- **Phase 1 (upload + ordering) is complete.** `/new` has drag-drop/paste, thumbnail grid, filmstrip with drag + keyboard reorder, and order inference.
-- **Phases 2–3 (extraction + batch pipeline) are complete.** `/api/extract`, `/api/dedup`, `/api/review` are wired; client-side batch orchestrator with concurrency cap, deterministic + semantic dedup, review pass, token-subset guardrail, and per-image progress panel.
-- **Phase 4 (preview + editing) is in progress.** `/note/[id]` has split-pane preview with Tiptap Markdown editor, synchronized scroll, ordering warnings, and revert-to-extracted.
-- **No export, persistence, or theming yet.** Those land in Phases 5–6.
+- **Phases 0–6 are complete.** Upload, ordering, extraction, dedup, review, preview, editing, export, theming, and local history are all implemented.
+- **Phase 7 (polish, a11y, performance, launch) is in progress.** Focus: WCAG AA audit, micro-interactions, performance tuning, privacy policy, eval harnesses, and launch readiness.
 
 ## Commands
 
@@ -20,13 +17,11 @@ Compact guidance for OpenCode sessions working in this repo. When in doubt, trus
 | `pnpm start` | Run production build locally. |
 | `pnpm lint` | ESLint (Next.js core-web-vitals + typescript configs). |
 
-> No test runner or typecheck script exists yet. The Plan says eval harnesses land in Phase 7.
-
 ## Setup
 
 ```bash
 pnpm install
-cp .env.example .env.local   # leave OPENROUTER_API_KEY blank until Phase 2
+cp .env.example .env.local   # add OPENROUTER_API_KEY for extraction to work
 pnpm dev
 ```
 
@@ -41,12 +36,12 @@ pnpm dev
 
 | Route | Status | Purpose |
 |-------|--------|---------|
-| `/` | stub | Home / recent notes (Phase 6) |
-| `/new` | active UI | Upload + order (Phase 1); generate wired |
-| `/note/[id]` | active UI | Preview + editing (Phase 4); export stubbed |
-| `/privacy` | stub | Policy copy (Phase 7) |
+| `/` | active | Home / recent notes (Phase 6) |
+| `/new` | active | Upload + order + generation (Phases 1–3) |
+| `/note/[id]` | active | Preview + editing + export (Phases 4–5) |
+| `/privacy` | active | Full policy copy (Phase 7) |
 
-API routes: `POST /api/extract`, `POST /api/dedup`, `POST /api/review` wired. Planned: `GET /api/export`.
+API routes: `POST /api/extract`, `POST /api/dedup`, `POST /api/review`, `POST /api/export` wired.
 
 ## Load-bearing constraints (never violate locally)
 

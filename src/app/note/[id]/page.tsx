@@ -25,9 +25,9 @@ import { runBatchPipeline } from "@/lib/pipeline/batch";
 import type { ExportTheme } from "@/lib/theme/types";
 import type { Note } from "@/lib/note/types";
 import { nanoid } from "nanoid";
-import { isAcceptedImage, rejectionReason } from "@/lib/upload/validation";
+import { isAcceptedImage } from "@/lib/upload/validation";
 import type { StagedImage } from "@/lib/upload/types";
-import { UploadSurface } from "@/components/upload/upload-surface";
+
 
 export default function NotePage() {
   const params = useParams();
@@ -77,7 +77,14 @@ export default function NotePage() {
   const handleMarkdownChange = useCallback(
     async (value: string) => {
       setMarkdown(value);
-      await updateNote(id, { markdown: value });
+      try {
+        await updateNote(id, { markdown: value });
+        setQuotaError(false);
+      } catch (err) {
+        if (err instanceof QuotaExceededError) {
+          setQuotaError(true);
+        }
+      }
     },
     [id],
   );
@@ -85,7 +92,14 @@ export default function NotePage() {
   const handleRevert = useCallback(async () => {
     if (!note) return;
     setMarkdown(note.extractedMarkdown);
-    await updateNote(id, { markdown: note.extractedMarkdown });
+    try {
+      await updateNote(id, { markdown: note.extractedMarkdown });
+      setQuotaError(false);
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        setQuotaError(true);
+      }
+    }
   }, [note, id]);
 
   const handleDelete = useCallback(async () => {
@@ -132,11 +146,16 @@ export default function NotePage() {
         if (updated) {
           setNote(updated);
           setMarkdown(updated.markdown);
+          setQuotaError(false);
         }
       } catch (err) {
-        setContinueError(
-          err instanceof Error ? err.message : "Continue failed",
-        );
+        if (err instanceof QuotaExceededError) {
+          setQuotaError(true);
+        } else {
+          setContinueError(
+            err instanceof Error ? err.message : "Continue failed",
+          );
+        }
       } finally {
         setContinuing(false);
         // Clean up object URLs for the temporary staged images.
@@ -222,7 +241,14 @@ export default function NotePage() {
             theme={theme}
             onChange={async (t) => {
               setTheme(t);
-              await updateNote(id, { preferences: t });
+              try {
+                await updateNote(id, { preferences: t });
+                setQuotaError(false);
+              } catch (err) {
+                if (err instanceof QuotaExceededError) {
+                  setQuotaError(true);
+                }
+              }
             }}
             title={note.title}
             markdown={markdown}
@@ -272,6 +298,17 @@ export default function NotePage() {
           </span>
         )}
       </div>
+
+      {/* Quota warning */}
+      {quotaError && (
+        <div className="flex items-start gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">
+          <AlertTriangle className="size-4 shrink-0 mt-0.5" />
+          <span>
+            Storage quota exceeded. Please delete some older notes from the home
+            screen to free up space.
+          </span>
+        </div>
+      )}
 
       {/* Token-subset guardrail warning */}
       {note.tokenSubsetViolations && note.tokenSubsetViolations.length > 0 && (

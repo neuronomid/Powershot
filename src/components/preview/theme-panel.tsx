@@ -83,6 +83,7 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
     async (format: "pdf" | "docx") => {
       setExporting(format);
       setFallbackWarning(false);
+      const t0 = performance.now();
       try {
         const res = await fetch(`/api/export?format=${format}`, {
           method: "POST",
@@ -96,6 +97,9 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
         }
 
         const blob = await res.blob();
+        const elapsed = Math.round(performance.now() - t0);
+        console.log(`[export] ${format.toUpperCase()} generated in ${elapsed} ms`);
+
         const fallback = res.headers.get("X-Fallback-Format");
         if (fallback === "docx" && format === "pdf") {
           setFallbackWarning(true);

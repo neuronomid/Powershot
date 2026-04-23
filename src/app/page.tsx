@@ -5,7 +5,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   FileText,
   History,
-  Plus,
   Trash2,
   AlertTriangle,
 } from "lucide-react";
@@ -21,27 +20,34 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [isQuotaError, setIsQuotaError] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const all = await listNotes();
-      setNotes(all);
-      setError(null);
-      setIsQuotaError(false);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to load notes from local storage.";
-      setError(message);
-      setIsQuotaError(err instanceof QuotaExceededError);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    load();
-  }, [load]);
+    let cancelled = false;
+
+    listNotes()
+      .then((all) => {
+        if (cancelled) return;
+        setNotes(all);
+        setError(null);
+        setIsQuotaError(false);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to load notes from local storage.";
+        setError(message);
+        setIsQuotaError(err instanceof QuotaExceededError);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleDelete = useCallback(
     async (id: string, e: React.MouseEvent) => {
@@ -74,18 +80,33 @@ export default function HomePage() {
             Everything stays local to your browser. Create, edit, and export
             structured notes from screenshots.
           </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6 animate-in slide-in-from-bottom-12 duration-1000 fill-mode-both delay-300">
-            <Button
-              asChild
-              size="lg"
-              variant="glossy"
-              className="h-12 rounded-full px-10 text-base font-semibold shadow-lg shadow-primary/20 transition-all hover:scale-105 hover:shadow-primary/30"
-            >
-              <Link href="/new">
-                <Plus className="mr-2 size-5" />
-                New note
-              </Link>
-            </Button>
+          <div className="mt-12 flex items-center justify-center gap-x-6 animate-in slide-in-from-bottom-12 duration-1000 fill-mode-both delay-300">
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute -inset-2 rounded-[1.75rem] bg-primary/15 blur-2xl transition-opacity duration-300"
+              />
+              <Button
+                asChild
+                size="lg"
+                variant="glossy"
+                className="relative isolate h-16 min-w-[13.5rem] gap-3 overflow-hidden rounded-[1.25rem] px-9 text-lg font-bold tracking-tight shadow-2xl shadow-primary/30 ring-1 ring-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-primary/40 sm:min-w-[15rem] sm:px-12"
+              >
+                <Link href="/new">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 bg-gradient-to-r from-primary via-primary to-primary/85"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -left-16 top-0 h-full w-12 -skew-x-12 bg-primary-foreground/25 opacity-70 transition-transform duration-700 group-hover/button:translate-x-[19rem]"
+                  />
+                  <span className="relative inline-flex w-full items-center justify-center text-center">
+                    + New Note
+                  </span>
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
       </div>
