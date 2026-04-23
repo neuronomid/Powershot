@@ -17,6 +17,7 @@ vi.mock("@sparticuz/chromium", () => ({
 
 vi.mock("puppeteer-core", () => ({
   default: {
+    defaultArgs: vi.fn(({ args }) => args),
     launch: mocks.launch,
   },
 }));

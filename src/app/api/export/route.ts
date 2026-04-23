@@ -7,6 +7,8 @@ export const maxDuration = 60;
 import { NextRequest, NextResponse } from "next/server";
 import puppeteer from "puppeteer-core";
 import chromium from "@sparticuz/chromium";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 import { markdownToHtml } from "@/lib/export/markdown-to-html";
 import { buildThemedHtml } from "@/lib/export/themed-html";
@@ -29,19 +31,16 @@ async function generatePdf(params: {
   const bodyHtml = await markdownToHtml(markdown);
   const html = buildThemedHtml({ title, bodyHtml, theme });
 
-  const executablePath =
-    process.env.NODE_ENV === "development"
-      ? process.env.PUPPETEER_EXECUTABLE_PATH ||
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-      : await chromium.executablePath();
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const headless = isDevelopment ? true : ("shell" as const);
+  const executablePath = await resolveChromiumExecutablePath(isDevelopment);
 
   const browser = await puppeteer.launch({
-    args:
-      process.env.NODE_ENV === "development"
-        ? undefined
-        : chromium.args,
+    args: isDevelopment
+      ? undefined
+      : puppeteer.defaultArgs({ args: chromium.args, headless }),
     executablePath,
-    headless: true,
+    headless,
   });
 
   try {
@@ -63,6 +62,31 @@ async function generatePdf(params: {
   } finally {
     await browser.close();
   }
+}
+
+async function resolveChromiumExecutablePath(
+  isDevelopment: boolean,
+): Promise<string> {
+  if (isDevelopment) {
+    return (
+      process.env.PUPPETEER_EXECUTABLE_PATH ||
+      "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    );
+  }
+
+  const tracedBinPath = join(
+    process.cwd(),
+    "node_modules",
+    "@sparticuz",
+    "chromium",
+    "bin",
+  );
+
+  if (existsSync(tracedBinPath)) {
+    return chromium.executablePath(tracedBinPath);
+  }
+
+  return chromium.executablePath();
 }
 
 export async function POST(request: NextRequest) {
