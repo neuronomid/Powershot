@@ -90,6 +90,9 @@ export async function deleteNote(id: string): Promise<boolean> {
   for (const img of images) {
     try {
       URL.revokeObjectURL(img.objectUrl);
+      if (img.originalObjectUrl && img.originalObjectUrl !== img.objectUrl) {
+        URL.revokeObjectURL(img.originalObjectUrl);
+      }
     } catch {
       /* ignore */
     }
@@ -115,20 +118,23 @@ export async function appendToNote(
     anchors: ChunkAnchor[];
     warnings: OrderingWarning[];
     tokenSubsetViolations: string[] | null;
+    images?: StagedImage[];
     chunks?: ChunkMeta[];
   },
 ): Promise<Note | undefined> {
   const existing = await getNote(id);
   if (!existing) return undefined;
 
-  const newMarkdown = existing.markdown
+  const hasExistingMarkdown = existing.markdown.length > 0;
+  const newMarkdown = hasExistingMarkdown
     ? `${existing.markdown}\n\n${params.markdown}`
     : params.markdown;
-  const newExtracted = existing.extractedMarkdown
+  const hasExistingExtracted = existing.extractedMarkdown.length > 0;
+  const newExtracted = hasExistingExtracted
     ? `${existing.extractedMarkdown}\n\n${params.extractedMarkdown}`
     : params.extractedMarkdown;
 
-  const offset = existing.markdown.length + 2;
+  const offset = hasExistingMarkdown ? existing.markdown.length + 2 : 0;
   const shiftedAnchors = params.anchors.map((a) => ({
     ...a,
     startOffset: a.startOffset + offset,
@@ -139,6 +145,7 @@ export async function appendToNote(
     ...existing,
     markdown: newMarkdown,
     extractedMarkdown: newExtracted,
+    images: [...existing.images, ...(params.images ?? [])],
     anchors: [...existing.anchors, ...shiftedAnchors],
     warnings: [...existing.warnings, ...params.warnings],
     tokenSubsetViolations: existing.tokenSubsetViolations
@@ -200,6 +207,9 @@ if (typeof window !== "undefined") {
       for (const img of note.images) {
         try {
           URL.revokeObjectURL(img.objectUrl);
+          if (img.originalObjectUrl && img.originalObjectUrl !== img.objectUrl) {
+            URL.revokeObjectURL(img.originalObjectUrl);
+          }
         } catch {
           /* ignore */
         }

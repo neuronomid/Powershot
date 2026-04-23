@@ -111,7 +111,10 @@ export async function POST(request: NextRequest) {
 
   const rateLimit = await checkRateLimit(request, "export");
   if (!rateLimit.allowed) {
-    return createRateLimitResponse(rateLimit.retryAfterSeconds!);
+    return createRateLimitResponse(
+      rateLimit.retryAfterSeconds!,
+      rateLimit.reason,
+    );
   }
 
   const { searchParams } = new URL(request.url);

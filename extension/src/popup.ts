@@ -3,9 +3,8 @@ import {
   POWERSHOT_CAPTURE_VISIBLE,
   PRIMARY_APP_URL,
 } from "./constants";
+import { getChromeApi } from "./chrome";
 import "./popup.css";
-
-const browserChrome = (globalThis as typeof globalThis & { chrome?: any }).chrome;
 
 function setStatus(message: string) {
   const status = document.querySelector<HTMLParagraphElement>("#status");
@@ -15,6 +14,7 @@ function setStatus(message: string) {
 }
 
 async function sendAction(type: string) {
+  const browserChrome = getChromeApi();
   if (!browserChrome?.runtime?.sendMessage) {
     setStatus("Chrome extension APIs are unavailable in this context.");
     return;

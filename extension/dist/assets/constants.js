@@ -1,1 +1,0 @@
-const E="https://powershot.app",R="POWERSHOT_DELIVER_CAPTURE",P="POWERSHOT_CAPTURE_VISIBLE",O="POWERSHOT_CAPTURE_REGION";function _(){return`${E}/new?source=extension`}export{E as P,P as a,O as b,_ as c,R as d};

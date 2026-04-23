@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "extension/dist/**",
+    "extension/node_modules/**",
     "next-env.d.ts",
     // Local/browser test artifacts:
     "coverage/**",

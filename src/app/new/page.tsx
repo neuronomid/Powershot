@@ -194,12 +194,12 @@ function NewNotePageInner() {
           file,
           objectUrl,
           previewUrl: objectUrl,
-          detectedAt: null,
-          timestampSource: "insertion",
-          source: "screenshot",
-          enhanced: false,
-          croppedRegion: null,
-        });
+                detectedAt: null,
+                timestampSource: "insertion",
+                source: "screenshot",
+                enhanced: enhance,
+                croppedRegion: null,
+              });
         addedCount++;
       }
 
@@ -216,7 +216,7 @@ function NewNotePageInner() {
       setAutoOrderIds(ordered.map((i) => i.id));
       setConfidence(confidence);
     },
-    [title],
+    [enhance, title],
   );
 
   const handleRemove = useCallback((id: string) => {
@@ -276,6 +276,7 @@ function NewNotePageInner() {
         return {
           imageIndex: imgIndex >= 0 ? imgIndex : 0,
           model: j.model!,
+          imageId: j.imageId,
           croppedRegion: img?.croppedRegion ?? null,
           enhanced: img?.enhanced ?? false,
           source: img?.source ?? "screenshot",

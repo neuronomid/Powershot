@@ -42,7 +42,9 @@ export const ImagePane = forwardRef<HTMLDivElement, ImagePaneProps>(
         className="flex-1 min-h-[40dvh] lg:min-h-0 overflow-y-auto rounded-xl border border-border bg-background p-3 sm:p-4 space-y-4"
       >
         {images.map((img, idx) => {
-          const chunk = chunks?.find((c) => c.imageIndex === idx);
+          const chunk =
+            chunks?.find((c) => c.imageId === img.id) ??
+            chunks?.find((c) => !c.imageId && c.imageIndex === idx);
           const isFallback = chunk?.model && chunk.model !== PRIMARY_MODEL;
 
           return (

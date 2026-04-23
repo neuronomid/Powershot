@@ -1,11 +1,11 @@
 import {
   POWERSHOT_CAPTURE_ACK,
+  isPowershotCaptureMessage,
   type PowershotCaptureAckMessage,
   type PowershotCaptureMessage,
 } from "../../../src/lib/intake/messages";
+import { getChromeApi } from "../chrome";
 import { POWERSHOT_DELIVER_CAPTURE } from "../constants";
-
-const browserChrome = (globalThis as typeof globalThis & { chrome?: any }).chrome;
 
 function isCaptureAck(value: unknown): value is PowershotCaptureAckMessage {
   if (!value || typeof value !== "object") return false;
@@ -17,13 +17,30 @@ function isCaptureAck(value: unknown): value is PowershotCaptureAckMessage {
   );
 }
 
-browserChrome?.runtime?.onMessage?.addListener?.(
+function isDeliverCaptureMessage(
+  value: unknown,
+): value is {
+  type: typeof POWERSHOT_DELIVER_CAPTURE;
+  payload: PowershotCaptureMessage;
+} {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as {
+    type?: unknown;
+    payload?: unknown;
+  };
+  return (
+    candidate.type === POWERSHOT_DELIVER_CAPTURE &&
+    isPowershotCaptureMessage(candidate.payload)
+  );
+}
+
+getChromeApi()?.runtime.onMessage.addListener(
   (
-    message: { type?: string; payload?: PowershotCaptureMessage },
+    message: unknown,
     _sender: unknown,
     sendResponse: (response: { ok: boolean; error?: string }) => void,
   ) => {
-    if (message.type !== POWERSHOT_DELIVER_CAPTURE || !message.payload) {
+    if (!isDeliverCaptureMessage(message)) {
       return undefined;
     }
 
@@ -31,7 +48,10 @@ browserChrome?.runtime?.onMessage?.addListener?.(
 
     const timeoutId = window.setTimeout(() => {
       window.removeEventListener("message", onWindowMessage);
-      sendResponse({ ok: false, error: "Powershot did not acknowledge the capture in time." });
+      sendResponse({
+        ok: false,
+        error: "Powershot did not acknowledge the capture in time.",
+      });
     }, 2000);
 
     const onWindowMessage = (event: MessageEvent) => {

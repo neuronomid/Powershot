@@ -236,9 +236,9 @@ If we want a "focus your review here" cue in a later revision, we should ground 
 
 - Add a "Footer" toggle in the theme panel: "Add 'Made with Powershot' footer" (default: off).
 - When enabled, the export includes a small footer on the last page (PDF) or at the end of the document (DOCX):
-  - PDF: `— Made with Powershot | powershot.app` in 8pt muted color, right-aligned.
+  - PDF: `— Made with Powershot | powershot.org` in 8pt muted color, right-aligned.
   - DOCX: Same text as a centered footer paragraph in 8pt gray.
-  - Markdown: `*Made with [Powershot](https://powershot.app)*` at the end.
+  - Markdown: `*Made with [Powershot](https://powershot.org)*` at the end.
 - The footer text and URL are constants, not user-configurable.
 - The toggle persists in `localStorage` as part of theme preferences.
 

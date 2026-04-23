@@ -27,7 +27,11 @@ import type { ExportTheme } from "@/lib/theme/types";
 import type { Note } from "@/lib/note/types";
 import type { ChunkMeta } from "@/lib/pipeline/types";
 import { nanoid } from "nanoid";
-import { isAcceptedImage, MAX_IMAGES_PER_NOTE } from "@/lib/upload/validation";
+import {
+  isAcceptedImage,
+  isPdfFile,
+  MAX_IMAGES_PER_NOTE,
+} from "@/lib/upload/validation";
 import type { StagedImage } from "@/lib/upload/types";
 import { ReviewChangeSummaryPanel } from "@/components/pipeline/review-change-summary";
 import { FallbackBanner } from "@/components/pipeline/fallback-banner";
@@ -46,7 +50,6 @@ export default function NotePage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [editorFocused, setEditorFocused] = useState(false);
-  const [reviewChangesDismissed, setReviewChangesDismissed] = useState(false);
   const [fallbackDismissed, setFallbackDismissed] = useState(false);
   const [theme, setTheme] = useState<ExportTheme>(() => loadTheme());
   const [continuing, setContinuing] = useState(false);
@@ -142,6 +145,49 @@ export default function NotePage() {
       for (const file of files) {
         if (!isAcceptedImage(file)) continue;
         if (addedCount >= remainingSlots) break;
+
+        if (isPdfFile(file)) {
+          try {
+            const { renderPdfToPageImages } = await import("@/lib/upload/pdf");
+            const { pages, warning } = await renderPdfToPageImages(file);
+            if (warning) {
+              setContinueError(warning);
+            }
+
+            for (const page of pages) {
+              if (addedCount >= remainingSlots) break;
+              const blob = await fetch(page.dataUrl).then((r) => r.blob());
+              const pageFile = new File(
+                [blob],
+                `${file.name} page ${page.pageNumber}.jpg`,
+                {
+                  type: "image/jpeg",
+                  lastModified: Date.now(),
+                },
+              );
+              const objectUrl = URL.createObjectURL(blob);
+              fresh.push({
+                id: nanoid(),
+                file: pageFile,
+                objectUrl,
+                previewUrl: objectUrl,
+                detectedAt: null,
+                timestampSource: "insertion",
+                source: "pdf-page",
+                pageNumber: page.pageNumber,
+                enhanced: false,
+                croppedRegion: null,
+              });
+              addedCount++;
+            }
+          } catch {
+            setContinueError(
+              "Failed to render PDF pages. The file may be corrupted or password-protected.",
+            );
+          }
+          continue;
+        }
+
         const objectUrl = URL.createObjectURL(file);
         fresh.push({
           id: nanoid(),
@@ -163,20 +209,33 @@ export default function NotePage() {
         return;
       }
 
+      let appended = false;
       try {
-        const result = await runBatchPipeline(fresh);
+        const extractedModels = new Map<string, string>();
+        const result = await runBatchPipeline(fresh, {
+          callbacks: {
+            onExtractSuccess: (imageId, _markdown, model) => {
+              extractedModels.set(imageId, model);
+            },
+          },
+        });
         const preReview = result.preReviewMarkdown ?? "";
         const postReview = result.markdown;
         const changes = computeReviewChanges(preReview, postReview);
         setContinueReviewChanges({ summary: changes, dismissed: false });
 
-        const newChunks: ChunkMeta[] = fresh.map((img, i) => ({
-          imageIndex: existingCount + i,
-          model: "",
-          croppedRegion: null,
-          enhanced: false,
-          source: img.source ?? "screenshot",
-        }));
+        const newChunks: ChunkMeta[] = result.anchors.map((anchor) => {
+          const localIndex = fresh.findIndex((img) => img.id === anchor.imageId);
+          const img = fresh[localIndex];
+          return {
+            imageId: anchor.imageId,
+            imageIndex: existingCount + Math.max(0, localIndex),
+            model: extractedModels.get(anchor.imageId) ?? "",
+            croppedRegion: img?.croppedRegion ?? null,
+            enhanced: img?.enhanced ?? false,
+            source: img?.source ?? "screenshot",
+          };
+        });
 
         const updated = await appendToNote(id, {
           markdown: result.markdown,
@@ -184,9 +243,11 @@ export default function NotePage() {
           anchors: result.anchors,
           warnings: result.warnings,
           tokenSubsetViolations: result.tokenSubsetViolations,
+          images: fresh,
           chunks: newChunks,
         });
         if (updated) {
+          appended = true;
           setNote(updated);
           setMarkdown(updated.markdown);
           setQuotaError(false);
@@ -201,8 +262,10 @@ export default function NotePage() {
         }
       } finally {
         setContinuing(false);
-        for (const img of fresh) {
-          URL.revokeObjectURL(img.objectUrl);
+        if (!appended) {
+          for (const img of fresh) {
+            URL.revokeObjectURL(img.objectUrl);
+          }
         }
       }
     },
@@ -237,7 +300,9 @@ export default function NotePage() {
           // Update chunk model
           const imgIndex = note.images.findIndex((i) => i.id === imageId);
           const newChunks = updatedNote.chunks.map((c) =>
-            c.imageIndex === imgIndex ? { ...c, model: data.model } : c,
+            c.imageId === imageId || (!c.imageId && c.imageIndex === imgIndex)
+              ? { ...c, model: data.model }
+              : c,
           );
           const finalNote = { ...updatedNote, chunks: newChunks };
           await updateNote(id, {
@@ -278,12 +343,6 @@ export default function NotePage() {
     .filter((c) => c.model && c.model !== MODEL_CHAIN[0])
     .map((c) => c.model);
   const uniqueFallbackModels = [...new Set(fallbackModels)];
-
-  const initialReviewChanges = (() => {
-    if (!note.extractedMarkdown || !note.markdown) return null;
-    if (note.extractedMarkdown === note.markdown) return null;
-    return computeReviewChanges(note.extractedMarkdown, note.markdown);
-  })();
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] max-w-7xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-6">
@@ -444,14 +503,6 @@ export default function NotePage() {
         <ReviewChangeSummaryPanel
           summary={continueReviewChanges.summary}
           onDismiss={() => setContinueReviewChanges((prev) => prev ? { ...prev, dismissed: true } : null)}
-        />
-      )}
-
-      {/* Initial review-change summary (from note creation) */}
-      {initialReviewChanges && initialReviewChanges.hasChanges && !reviewChangesDismissed && (
-        <ReviewChangeSummaryPanel
-          summary={initialReviewChanges}
-          onDismiss={() => setReviewChangesDismissed(true)}
         />
       )}
 

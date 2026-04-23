@@ -82,6 +82,7 @@ export type ReviewChangeSummary = {
 };
 
 export type ChunkMeta = {
+  imageId?: string;
   imageIndex: number;
   model: string;
   croppedRegion?: { x: number; y: number; width: number; height: number } | null;

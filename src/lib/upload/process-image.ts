@@ -36,17 +36,13 @@ export async function processImageForExtraction(
     enhance = false,
   } = opts;
 
-  const sourceUrl = image.objectUrl;
-
-  const img = await loadImage(sourceUrl);
+  const img = await loadImage(image.objectUrl);
   const orientation = await readExifOrientation(image.file);
+  const orientedCanvas = renderOrientedImage(img, orientation);
 
-  // Determine canvas dimensions after rotation
-  const isRotated90 = orientation === 5 || orientation === 6 || orientation === 7 || orientation === 8;
-  const srcWidth = isRotated90 ? img.naturalHeight : img.naturalWidth;
-  const srcHeight = isRotated90 ? img.naturalWidth : img.naturalHeight;
+  const srcWidth = orientedCanvas.width;
+  const srcHeight = orientedCanvas.height;
 
-  // Apply crop ratios if present
   let cropX = 0;
   let cropY = 0;
   let cropW = srcWidth;
@@ -65,7 +61,6 @@ export async function processImageForExtraction(
     cropH = Math.max(1, Math.min(cropH, srcHeight - cropY));
   }
 
-  // Resize after crop
   let outW = cropW;
   let outH = cropH;
   if (outW > maxWidth || outH > maxHeight) {
@@ -82,105 +77,18 @@ export async function processImageForExtraction(
     throw new Error("Canvas 2D context not available");
   }
 
-  // Apply EXIF rotation transform to the context
-  // We draw from the original image into the output canvas.
-  // The transform handles rotation; we also need to map crop coordinates back
-  // to the original image coordinate system.
-  let drawSx = 0;
-  let drawSy = 0;
-  let drawSw = img.naturalWidth;
-  let drawSh = img.naturalHeight;
-
-  if (image.croppedRegion) {
-    // croppedRegion ratios are relative to the *rotated* logical dimensions.
-    // We need to map them back to the original image coordinates before applying
-    // the canvas transform.
-    const logicalW = isRotated90 ? img.naturalHeight : img.naturalWidth;
-    const logicalH = isRotated90 ? img.naturalWidth : img.naturalHeight;
-
-    const lx = image.croppedRegion.x * logicalW;
-    const ly = image.croppedRegion.y * logicalH;
-    const lw = image.croppedRegion.width * logicalW;
-    const lh = image.croppedRegion.height * logicalH;
-
-    switch (orientation) {
-      case 1:
-      default:
-        drawSx = lx;
-        drawSy = ly;
-        drawSw = lw;
-        drawSh = lh;
-        break;
-      case 2:
-        drawSx = img.naturalWidth - lx - lw;
-        drawSy = ly;
-        drawSw = lw;
-        drawSh = lh;
-        break;
-      case 3:
-        drawSx = img.naturalWidth - lx - lw;
-        drawSy = img.naturalHeight - ly - lh;
-        drawSw = lw;
-        drawSh = lh;
-        break;
-      case 4:
-        drawSx = lx;
-        drawSy = img.naturalHeight - ly - lh;
-        drawSw = lw;
-        drawSh = lh;
-        break;
-      case 5:
-        drawSx = ly;
-        drawSy = lx;
-        drawSw = lh;
-        drawSh = lw;
-        break;
-      case 6:
-        drawSx = img.naturalHeight - ly - lh;
-        drawSy = lx;
-        drawSw = lh;
-        drawSh = lw;
-        break;
-      case 7:
-        drawSx = img.naturalHeight - ly - lh;
-        drawSy = img.naturalWidth - lx - lw;
-        drawSw = lh;
-        drawSh = lw;
-        break;
-      case 8:
-        drawSx = ly;
-        drawSy = img.naturalWidth - lx - lw;
-        drawSw = lh;
-        drawSh = lw;
-        break;
-    }
-  }
-
-  // Clamp draw source to image bounds
-  drawSx = Math.max(0, Math.min(drawSx, img.naturalWidth));
-  drawSy = Math.max(0, Math.min(drawSy, img.naturalHeight));
-  drawSw = Math.max(1, Math.min(drawSw, img.naturalWidth - drawSx));
-  drawSh = Math.max(1, Math.min(drawSh, img.naturalHeight - drawSy));
-
-  // Set transform for rotation
-  if (orientation) {
-    applyExifTransform(ctx, orientation, img.naturalWidth, img.naturalHeight);
-  }
-
-  // Draw the (optionally cropped) source region into the output canvas
   ctx.drawImage(
-    img,
-    drawSx,
-    drawSy,
-    drawSw,
-    drawSh,
+    orientedCanvas,
+    cropX,
+    cropY,
+    cropW,
+    cropH,
     0,
     0,
     outW,
     outH,
   );
 
-  // Enhancement
   const shouldEnhance = enhance || image.enhanced;
   if (shouldEnhance) {
     const imageData = ctx.getImageData(0, 0, outW, outH);
@@ -209,4 +117,32 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("Failed to decode image"));
     img.src = src;
   });
+}
+
+function renderOrientedImage(
+  img: HTMLImageElement,
+  orientation: number | undefined,
+): HTMLCanvasElement {
+  const isRotated90 =
+    orientation === 5 ||
+    orientation === 6 ||
+    orientation === 7 ||
+    orientation === 8;
+  const width = isRotated90 ? img.naturalHeight : img.naturalWidth;
+  const height = isRotated90 ? img.naturalWidth : img.naturalHeight;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  if (!ctx) {
+    throw new Error("Canvas 2D context not available");
+  }
+
+  if (orientation) {
+    applyExifTransform(ctx, orientation, img.naturalWidth, img.naturalHeight);
+  }
+  ctx.drawImage(img, 0, 0);
+
+  return canvas;
 }

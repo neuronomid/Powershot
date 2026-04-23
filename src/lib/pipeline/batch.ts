@@ -91,7 +91,9 @@ export async function runBatchPipeline(
     callbacks?.onExtractStart?.(image.id);
 
     try {
-      const dataUrl = await processImageForExtraction(image, { enhance });
+      const dataUrl = await processImageForExtraction(image, {
+        enhance: enhance && image.source !== "pdf-page",
+      });
       if (signal?.aborted) return;
 
       const res = await fetch("/api/extract", {

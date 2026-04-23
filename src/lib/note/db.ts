@@ -116,6 +116,7 @@ function normalizeNote(note: PersistedNote): PersistedNote {
   return {
     ...note,
     chunks: (note.chunks ?? []).map((c) => ({
+      imageId: c.imageId,
       imageIndex: c.imageIndex ?? 0,
       model: c.model ?? "",
       croppedRegion: c.croppedRegion ?? null,

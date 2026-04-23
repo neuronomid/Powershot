@@ -109,7 +109,7 @@ test("paste adds a timestamp-named screenshot anywhere on the new-note page", as
   await page.goto("/new");
   await expect(page.getByText("Drag files, click to browse, or paste directly")).toBeVisible();
 
-  const dispatchResult = await page.evaluate((base64) => {
+  await page.evaluate((base64) => {
     const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
     const file = new File([bytes], "clipboard.png", { type: "image/png" });
     const event = new Event("paste", { bubbles: true, cancelable: true });

@@ -44,6 +44,12 @@ export function CropOverlay({ imageUrl, initialCrop, onApply, onCancel }: CropOv
     return containerRef.current?.getBoundingClientRect() ?? null;
   }, []);
 
+  const updateImageSize = useCallback(() => {
+    const rect = imgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setImgSize({ width: rect.width, height: rect.height });
+  }, []);
+
   const toRatios = useCallback(
     (px: number, py: number, pw: number, ph: number): CropRegion => {
       const w = imgSize.width || 1;
@@ -77,11 +83,11 @@ export function CropOverlay({ imageUrl, initialCrop, onApply, onCancel }: CropOv
       const rect = getRect();
       if (!rect) return { x: 0, y: 0 };
       return {
-        x: clamp(e.clientX - rect.left, 0, rect.width),
-        y: clamp(e.clientY - rect.top, 0, rect.height),
+        x: clamp(e.clientX - rect.left, 0, imgSize.width || rect.width),
+        y: clamp(e.clientY - rect.top, 0, imgSize.height || rect.height),
       };
     },
-    [getRect],
+    [getRect, imgSize.width, imgSize.height],
   );
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -204,6 +210,12 @@ export function CropOverlay({ imageUrl, initialCrop, onApply, onCancel }: CropOv
     };
   }, [drag, crop, getRect, getMousePos, toRatios, fromRatios]);
 
+  useEffect(() => {
+    updateImageSize();
+    window.addEventListener("resize", updateImageSize);
+    return () => window.removeEventListener("resize", updateImageSize);
+  }, [imageUrl, updateImageSize]);
+
   // Keyboard support
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -293,10 +305,7 @@ export function CropOverlay({ imageUrl, initialCrop, onApply, onCancel }: CropOv
             alt="Crop source"
             className="max-w-full max-h-[70vh] h-auto object-contain"
             draggable={false}
-            onLoad={(e) => {
-              const img = e.currentTarget;
-              setImgSize({ width: img.naturalWidth, height: img.naturalHeight });
-            }}
+            onLoad={() => requestAnimationFrame(updateImageSize)}
           />
 
           {/* Overlay */}

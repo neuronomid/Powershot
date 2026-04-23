@@ -6,8 +6,8 @@ import {
   POWERSHOT_CAPTURE_VISIBLE,
   POWERSHOT_DELIVER_CAPTURE,
 } from "./constants";
+import { getChromeApi, requireChromeApi } from "./chrome";
 
-const browserChrome = (globalThis as typeof globalThis & { chrome?: any }).chrome;
 const MAX_DELIVERY_ATTEMPTS = 3;
 const DELIVERY_BACKOFF_MS = 500;
 
@@ -32,6 +32,7 @@ function makeCaptureId() {
 }
 
 async function getActiveTab() {
+  const browserChrome = requireChromeApi();
   const tabs = await browserChrome.tabs.query({
     active: true,
     currentWindow: true,
@@ -60,12 +61,14 @@ function buildCapturePayload(
 }
 
 async function captureVisibleTab(windowId?: number) {
+  const browserChrome = requireChromeApi();
   return browserChrome.tabs.captureVisibleTab(windowId, {
     format: "png",
   });
 }
 
 async function isTabReady(tabId: number) {
+  const browserChrome = requireChromeApi();
   const [{ result }] = await browserChrome.scripting.executeScript({
     target: { tabId },
     func: () => document.readyState === "complete",
@@ -75,6 +78,7 @@ async function isTabReady(tabId: number) {
 }
 
 async function deliverCapture(tabId: number, payload: PowershotCaptureMessage) {
+  const browserChrome = requireChromeApi();
   for (let attempt = 0; attempt < MAX_DELIVERY_ATTEMPTS; attempt++) {
     if (attempt > 0) {
       await delay(DELIVERY_BACKOFF_MS);
@@ -103,6 +107,7 @@ async function deliverCapture(tabId: number, payload: PowershotCaptureMessage) {
 }
 
 async function openPowershotTab() {
+  const browserChrome = requireChromeApi();
   const tab = await browserChrome.tabs.create({
     url: buildNewNoteUrl(),
     active: true,
@@ -153,6 +158,7 @@ async function cropDataUrl(dataUrl: string, region: RegionSelection) {
 }
 
 async function pickRegion(tabId: number) {
+  const browserChrome = requireChromeApi();
   const [{ result }] = await browserChrome.scripting.executeScript({
     target: { tabId },
     func: () =>
@@ -313,13 +319,18 @@ async function sendRegionCapture() {
   await deliverCapture(powershotTabId, payload);
 }
 
-async function handleRuntimeMessage(message: { type?: string }) {
-  if (message.type === POWERSHOT_CAPTURE_VISIBLE) {
+async function handleRuntimeMessage(message: unknown) {
+  const type =
+    typeof message === "object" && message
+      ? (message as { type?: unknown }).type
+      : undefined;
+
+  if (type === POWERSHOT_CAPTURE_VISIBLE) {
     await sendVisibleTabCapture();
     return { ok: true };
   }
 
-  if (message.type === POWERSHOT_CAPTURE_REGION) {
+  if (type === POWERSHOT_CAPTURE_REGION) {
     await sendRegionCapture();
     return { ok: true };
   }
@@ -327,9 +338,9 @@ async function handleRuntimeMessage(message: { type?: string }) {
   return undefined;
 }
 
-browserChrome?.runtime?.onMessage?.addListener?.(
+getChromeApi()?.runtime.onMessage.addListener(
   (
-    message: { type?: string },
+    message: unknown,
     _sender: unknown,
     sendResponse: (response: { ok: boolean; error?: string }) => void,
   ) => {
@@ -353,7 +364,7 @@ browserChrome?.runtime?.onMessage?.addListener?.(
   },
 );
 
-browserChrome?.commands?.onCommand?.addListener?.((command: string) => {
+getChromeApi()?.commands?.onCommand?.addListener((command: string) => {
   if (command !== "capture-visible-tab") {
     return;
   }

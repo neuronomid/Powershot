@@ -1,1 +1,0 @@
-const P="POWERSHOT_CAPTURE",E="POWERSHOT_CAPTURE_ACK";export{P,E as a};

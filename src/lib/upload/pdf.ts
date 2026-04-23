@@ -14,9 +14,11 @@ export type PdfPageImage = {
 
 const MAX_PDF_PAGES = 50;
 
-function getWorkerSrc(pdfjsLib: typeof import("pdfjs-dist")) {
-  // Use CDN worker to avoid bundling the large worker file.
-  return `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+function getWorkerSrc() {
+  return new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).toString();
 }
 
 export async function renderPdfToPageImages(
@@ -26,7 +28,7 @@ export async function renderPdfToPageImages(
   const { maxWidth = 1600, maxHeight = 1600, quality = 0.85 } = opts;
 
   const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc(pdfjsLib);
+  pdfjsLib.GlobalWorkerOptions.workerSrc = getWorkerSrc();
 
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

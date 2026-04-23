@@ -1,15 +1,20 @@
 "use client";
 
 import { Shield, ScrollText } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 
 const STORAGE_KEY = "powershot_terms_accepted";
 const TERMS_VERSION = "2026-04-23";
+const TERMS_CHANGE_EVENT = "powershot_terms_acceptance_change";
 
 function readStoredAcceptance(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
   try {
     return localStorage.getItem(STORAGE_KEY) === TERMS_VERSION;
   } catch {
@@ -17,18 +22,39 @@ function readStoredAcceptance(): boolean {
   }
 }
 
+function subscribeToTermsAcceptance(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  window.addEventListener("storage", callback);
+  window.addEventListener(TERMS_CHANGE_EVENT, callback);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(TERMS_CHANGE_EVENT, callback);
+  };
+}
+
+function getHydratedSnapshot() {
+  return typeof window !== "undefined";
+}
+
 export function useTermsAccepted(): {
   accepted: boolean;
   ready: boolean;
   accept: () => void;
 } {
-  const [accepted, setAccepted] = useState(false);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    setAccepted(readStoredAcceptance());
-    setReady(true);
-  }, []);
+  const accepted = useSyncExternalStore(
+    subscribeToTermsAcceptance,
+    readStoredAcceptance,
+    () => false,
+  );
+  const ready = useSyncExternalStore(
+    subscribeToTermsAcceptance,
+    getHydratedSnapshot,
+    () => false,
+  );
 
   const accept = useCallback(() => {
     try {
@@ -36,8 +62,7 @@ export function useTermsAccepted(): {
     } catch {
       // localStorage unavailable
     }
-    setAccepted(true);
-    setReady(true);
+    window.dispatchEvent(new Event(TERMS_CHANGE_EVENT));
   }, []);
 
   return { accepted, ready, accept };

@@ -30,7 +30,10 @@ export async function POST(request: Request) {
 
   const rateLimit = await checkRateLimit(request, "review");
   if (!rateLimit.allowed) {
-    return createRateLimitResponse(rateLimit.retryAfterSeconds!);
+    return createRateLimitResponse(
+      rateLimit.retryAfterSeconds!,
+      rateLimit.reason,
+    );
   }
 
   try {

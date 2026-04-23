@@ -32,10 +32,25 @@ function kvAvailable(): boolean {
 export async function checkRateLimit(
   request: Request,
   route: RateLimitRoute,
-): Promise<{ allowed: boolean; retryAfterSeconds?: number }> {
-  if (!kvAvailable()) {
-    console.warn(`[rate-limit] KV not configured. Rate limiting disabled for ${route}.`);
+): Promise<{
+  allowed: boolean;
+  retryAfterSeconds?: number;
+  reason?: "limited" | "unconfigured";
+}> {
+  if (process.env.NODE_ENV === "test") {
     return { allowed: true };
+  }
+
+  if (!kvAvailable()) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn(
+        `[rate-limit] KV not configured. Rate limiting disabled for ${route}.`,
+      );
+      return { allowed: true };
+    }
+
+    console.error(`[rate-limit] KV not configured for ${route}.`);
+    return { allowed: false, retryAfterSeconds: 60, reason: "unconfigured" };
   }
 
   const ip = getClientIp(request);
@@ -43,19 +58,19 @@ export async function checkRateLimit(
   const key = `rate-limit:${route}:${ip}`;
 
   try {
-    // Use a simple counter approach with expiration
-    const current = await kv.get<number>(key);
-    const count = (current ?? 0) + 1;
+    const count = await kv.incr(key);
+    if (count === 1) {
+      await kv.expire(key, config.windowSeconds);
+    }
 
     if (count > config.limit) {
       const ttl = await kv.ttl(key);
-      return { allowed: false, retryAfterSeconds: Math.max(1, ttl) };
+      return {
+        allowed: false,
+        retryAfterSeconds: Math.max(1, ttl),
+        reason: "limited",
+      };
     }
-
-    // Set or refresh the key with the window as TTL
-    const pipeline = kv.pipeline();
-    pipeline.set(key, count, { ex: config.windowSeconds });
-    await pipeline.exec();
 
     return { allowed: true };
   } catch (err) {
@@ -81,7 +96,20 @@ export function checkRequestSize(request: Request): {
 
 export function createRateLimitResponse(
   retryAfterSeconds: number,
+  reason: "limited" | "unconfigured" = "limited",
 ): Response {
+  if (reason === "unconfigured") {
+    return Response.json(
+      { error: "Rate limiting is not configured. Please try again later." },
+      {
+        status: 503,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+        },
+      },
+    );
+  }
+
   const minutes = Math.ceil(retryAfterSeconds / 60);
   const message =
     minutes > 1

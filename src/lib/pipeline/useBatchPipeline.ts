@@ -110,6 +110,7 @@ export function useBatchPipeline() {
   const controllerRef = useRef<AbortController | null>(null);
   const runIdRef = useRef(0);
   const extractionTimingsRef = useRef<number[]>([]);
+  const extractionStartTimesRef = useRef(new Map<string, number>());
   const etaRef = useRef<number | null>(null);
 
   const updateJob = useCallback(
@@ -131,6 +132,7 @@ export function useBatchPipeline() {
       controllerRef.current = controller;
       const runId = ++runIdRef.current;
       extractionTimingsRef.current = [];
+      extractionStartTimesRef.current = new Map();
       etaRef.current = null;
 
       const jobs: ExtractionJob[] = images.map((img) => ({
@@ -184,6 +186,7 @@ export function useBatchPipeline() {
           callbacks: {
             onExtractStart: (imageId) => {
               if (controller.signal.aborted || runId !== runIdRef.current) return;
+              extractionStartTimesRef.current.set(imageId, performance.now());
               setState((prev) => {
                 const updatedJobs = prev.jobs.map((j) =>
                   j.imageId === imageId ? { ...j, status: "extracting" as const } : j,
@@ -194,8 +197,8 @@ export function useBatchPipeline() {
             },
             onExtractSuccess: (imageId, markdown, model) => {
               if (controller.signal.aborted || runId !== runIdRef.current) return;
-              const elapsed = performance.now() - t0;
-              extractionTimingsRef.current.push(elapsed);
+              const startedAt = extractionStartTimesRef.current.get(imageId) ?? t0;
+              extractionTimingsRef.current.push(performance.now() - startedAt);
               setState((prev) => {
                 const updatedJobs = prev.jobs.map((j) =>
                   j.imageId === imageId
@@ -208,7 +211,8 @@ export function useBatchPipeline() {
             },
             onExtractError: (imageId, error) => {
               if (controller.signal.aborted || runId !== runIdRef.current) return;
-              extractionTimingsRef.current.push(performance.now() - t0);
+              const startedAt = extractionStartTimesRef.current.get(imageId) ?? t0;
+              extractionTimingsRef.current.push(performance.now() - startedAt);
               setState((prev) => {
                 const updatedJobs = prev.jobs.map((j) =>
                   j.imageId === imageId
@@ -303,7 +307,9 @@ export function useBatchPipeline() {
 
       try {
         const { processImageForExtraction } = await import("@/lib/upload/process-image");
-        const dataUrl = await processImageForExtraction(image, { enhance: opts.enhance });
+        const dataUrl = await processImageForExtraction(image, {
+          enhance: opts.enhance && image.source !== "pdf-page",
+        });
         const body: Record<string, unknown> = { image: dataUrl, imageCount: images.length };
         if (opts.promptType) body.promptType = opts.promptType;
         const res = await fetch("/api/extract", {
@@ -346,6 +352,7 @@ export function useBatchPipeline() {
     setReviewChanges(null);
     setProgress(null);
     extractionTimingsRef.current = [];
+    extractionStartTimesRef.current = new Map();
     etaRef.current = null;
   }, []);
 
