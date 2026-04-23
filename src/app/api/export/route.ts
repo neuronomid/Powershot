@@ -36,7 +36,10 @@ async function generatePdf(params: {
       : await chromium.executablePath();
 
   const browser = await puppeteer.launch({
-    args: chromium.args,
+    args:
+      process.env.NODE_ENV === "development"
+        ? undefined
+        : chromium.args,
     executablePath,
     headless: true,
   });

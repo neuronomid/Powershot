@@ -113,7 +113,7 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch (err) {
         console.error("Export failed:", err);
         alert(err instanceof Error ? err.message : "Export failed");

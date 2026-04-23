@@ -349,6 +349,7 @@ export default function NotePage() {
           markdown={markdown}
           onChange={handleMarkdownChange}
           onFocusChange={setEditorFocused}
+          theme={theme}
         />
       </div>
     </div>
