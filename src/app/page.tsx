@@ -11,6 +11,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { DonateBox } from "@/components/donate/donate-box";
 import { listNotes, deleteNote, deleteOldestNote, QuotaExceededError } from "@/lib/note/store";
 import type { Note } from "@/lib/note/types";
 
@@ -215,6 +216,10 @@ export default function HomePage() {
               </Link>
             ))
           )}
+        </div>
+
+        <div className="mx-auto mt-16 max-w-md lg:mx-auto">
+          <DonateBox compact />
         </div>
       </div>
     </div>

@@ -17,6 +17,12 @@ export function SiteFooter() {
             Create Note
           </Link>
           <Link
+            href="/donate"
+            className="hover:text-primary transition-colors tracking-tight"
+          >
+            Donate
+          </Link>
+          <Link
             href="/privacy"
             className="hover:text-primary transition-colors tracking-tight"
           >

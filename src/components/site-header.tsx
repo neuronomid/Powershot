@@ -6,7 +6,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-50 w-full bg-transparent border-none shadow-none transition-colors duration-300">
+    <header className="sticky top-0 z-50 w-full border-none bg-background/80 backdrop-blur-lg">
       <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-6 border-none">
         <Link
           href="/"

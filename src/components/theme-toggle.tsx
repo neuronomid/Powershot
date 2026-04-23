@@ -5,7 +5,8 @@ import { useEffect, useState, useRef } from "react";
 
 const LIGHT_BG = "oklch(0.99 0.01 260)";
 const DARK_BG = "oklch(0.08 0.02 260)";
-const DURATION = 350;
+const OVERLAY_DURATION = 350;
+const VIEW_TRANSITION_DURATION = 500;
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -21,8 +22,13 @@ export function ThemeToggle() {
   const isDark = mounted && resolvedTheme === "dark";
 
   const toggleTheme = () => {
+    if (!mounted) return;
+
+    const goingDark = !isDark;
+    const targetTheme = goingDark ? "dark" : "light";
+
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      setTheme(isDark ? "light" : "dark");
+      setTheme(targetTheme);
       return;
     }
 
@@ -30,16 +36,62 @@ export function ThemeToggle() {
     const x = rect ? rect.left + rect.width / 2 : window.innerWidth / 2;
     const y = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
 
-    const goingDark = !isDark;
+    setIsTransitioning(true);
+
+    if ("startViewTransition" in document) {
+      try {
+        const transition = (document as unknown as {
+          startViewTransition(cb: () => void): {
+            ready: Promise<void>;
+            finished: Promise<void>;
+          };
+        }).startViewTransition(() => {
+          setTheme(targetTheme);
+        });
+
+        transition.ready
+          .then(() => {
+            const maxDist = Math.hypot(
+              Math.max(x, window.innerWidth - x),
+              Math.max(y, window.innerHeight - y),
+            );
+            document.documentElement.animate(
+              {
+                clipPath: [
+                  `circle(0px at ${x}px ${y}px)`,
+                  `circle(${maxDist}px at ${x}px ${y}px)`,
+                ],
+              },
+              {
+                duration: VIEW_TRANSITION_DURATION,
+                easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+                pseudoElement: "::view-transition-new(root)",
+              },
+            );
+          })
+          .catch(() => {});
+
+        transition.finished
+          .then(() => setIsTransitioning(false))
+          .catch(() => setIsTransitioning(false));
+
+        return;
+      } catch {
+        // Fall through to overlay fallback
+      }
+    }
+
     const targetBg = goingDark ? DARK_BG : LIGHT_BG;
     const el = overlayRef.current;
-    if (!el) return;
-
-    setIsTransitioning(true);
+    if (!el) {
+      setTheme(targetTheme);
+      setIsTransitioning(false);
+      return;
+    }
 
     const maxDist = Math.hypot(
       Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y)
+      Math.max(y, window.innerHeight - y),
     );
     const scale = Math.ceil(maxDist / 2) + 2;
 
@@ -49,20 +101,27 @@ export function ThemeToggle() {
     el.style.transform = "translate(-50%, -50%) scale(0)";
     el.style.transition = "none";
 
-    // Force reflow so the reset takes effect before expansion
     void el.offsetWidth;
 
-    el.style.transition = `transform ${DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
+    el.style.transition = `transform ${OVERLAY_DURATION}ms cubic-bezier(0.4, 0, 0.2, 1)`;
     el.style.transform = `translate(-50%, -50%) scale(${scale})`;
 
+    let finished = false;
     const finish = () => {
-      setTheme(goingDark ? "dark" : "light");
-      el.style.transition = "none";
-      el.style.transform = "translate(-50%, -50%) scale(0)";
-      setIsTransitioning(false);
+      if (finished) return;
+      finished = true;
+      setTheme(targetTheme);
+      requestAnimationFrame(() => {
+        if (overlayRef.current) {
+          overlayRef.current.style.transition = "none";
+          overlayRef.current.style.transform =
+            "translate(-50%, -50%) scale(0)";
+        }
+        setIsTransitioning(false);
+      });
     };
 
-    const timer = setTimeout(finish, DURATION + 50);
+    const timer = setTimeout(finish, OVERLAY_DURATION + 50);
     el.addEventListener("transitionend", function handler() {
       el.removeEventListener("transitionend", handler);
       clearTimeout(timer);
@@ -83,7 +142,7 @@ export function ThemeToggle() {
 
   return (
     <>
-      {/* Lightweight circular wipe overlay — uses only transform for GPU smoothness */}
+      {/* Circular wipe overlay — fallback for browsers without View Transitions API */}
       <div
         ref={overlayRef}
         aria-hidden="true"
@@ -119,14 +178,13 @@ export function ThemeToggle() {
 
         {/* Celestial icon container */}
         <div className="relative h-5 w-5">
-          {/* Sun */}
+          {/* Sun — visible in light mode */}
           <div
             className={[
               "absolute inset-0 flex items-center justify-center",
-              "transition-all duration-500",
-              isDark
-                ? "opacity-0 scale-50 rotate-[120deg]"
-                : "opacity-100 scale-100 rotate-0",
+              "opacity-100 scale-100 rotate-0",
+              "dark:opacity-0 dark:scale-50 dark:rotate-[120deg]",
+              "transition-[opacity,transform] duration-300",
             ].join(" ")}
           >
             <svg
@@ -157,14 +215,13 @@ export function ThemeToggle() {
             </svg>
           </div>
 
-          {/* Moon */}
+          {/* Moon — visible in dark mode */}
           <div
             className={[
               "absolute inset-0 flex items-center justify-center",
-              "transition-all duration-500",
-              isDark
-                ? "opacity-100 scale-100 rotate-0"
-                : "opacity-0 scale-50 -rotate-[120deg]",
+              "opacity-0 scale-50 -rotate-[120deg]",
+              "dark:opacity-100 dark:scale-100 dark:rotate-0",
+              "transition-[opacity,transform] duration-300",
             ].join(" ")}
           >
             <svg
