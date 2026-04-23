@@ -11,7 +11,6 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { DonateBox } from "@/components/donate/donate-box";
 import { listNotes, deleteNote, deleteOldestNote, QuotaExceededError } from "@/lib/note/store";
 import type { Note } from "@/lib/note/types";
 
@@ -71,17 +70,17 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="relative isolate -mt-20 overflow-hidden pt-20">
-      <div className="mx-auto max-w-7xl px-6 pb-24 pt-10 sm:pb-32 lg:px-8 lg:pt-40">
+    <div className="relative isolate -mt-20 overflow-hidden pt-16 sm:pt-20">
+      <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6 sm:pb-24 sm:pt-10 lg:px-8 lg:pb-32 lg:pt-40">
         <div className="mx-auto max-w-2xl lg:max-w-4xl text-center">
-          <h1 className="mt-24 sm:mt-32 lg:mt-16 font-heading text-5xl font-bold tracking-tight text-foreground sm:text-7xl lg:text-8xl animate-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
+          <h1 className="mt-16 sm:mt-24 lg:mt-16 font-heading text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-7xl lg:text-8xl animate-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
             Your notes
           </h1>
-          <p className="mx-auto mt-8 text-pretty text-lg font-medium text-muted-foreground sm:text-xl/8 max-w-2xl animate-in slide-in-from-bottom-8 duration-1000 fill-mode-both delay-200">
+          <p className="mx-auto mt-4 sm:mt-8 text-pretty text-base sm:text-lg font-medium text-muted-foreground sm:text-xl/8 max-w-2xl animate-in slide-in-from-bottom-8 duration-1000 fill-mode-both delay-200">
             Everything stays local to your browser. Create, edit, and export
             structured notes from screenshots.
           </p>
-          <div className="mt-12 flex items-center justify-center gap-x-6 animate-in slide-in-from-bottom-12 duration-1000 fill-mode-both delay-300">
+          <div className="mt-8 sm:mt-12 flex items-center justify-center gap-x-6 animate-in slide-in-from-bottom-12 duration-1000 fill-mode-both delay-300">
             <div className="relative">
               <div
                 aria-hidden="true"
@@ -91,7 +90,7 @@ export default function HomePage() {
                 asChild
                 size="lg"
                 variant="glossy"
-                className="relative isolate h-16 min-w-[13.5rem] gap-3 overflow-hidden rounded-[1.25rem] px-9 text-lg font-bold tracking-tight shadow-2xl shadow-primary/30 ring-1 ring-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-primary/40 sm:min-w-[15rem] sm:px-12"
+                className="relative isolate h-14 min-w-[11rem] gap-3 overflow-hidden rounded-[1.25rem] px-7 text-base font-bold tracking-tight shadow-2xl shadow-primary/30 ring-1 ring-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.03] hover:shadow-primary/40 sm:min-w-[15rem] sm:h-16 sm:px-12 sm:text-lg"
               >
                 <Link href="/new">
                   <span
@@ -113,9 +112,9 @@ export default function HomePage() {
       </div>
 
       {/* Recent notes */}
-      <div className="mx-auto max-w-7xl px-6 pb-24 sm:pb-32 lg:px-8">
+      <div className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 sm:pb-24 lg:px-8">
         <div className="mx-auto max-w-2xl lg:mx-0">
-          <h2 className="flex items-center gap-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          <h2 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
             <History className="size-8 text-primary" />
             Recent notes
           </h2>
@@ -144,7 +143,7 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="mx-auto mt-12 grid max-w-2xl grid-cols-1 gap-x-8 gap-y-8 border-t border-border/60 pt-10 sm:mt-16 sm:pt-16 lg:mx-0 lg:max-w-none lg:grid-cols-3">
+        <div className="mx-auto mt-8 sm:mt-12 grid max-w-2xl grid-cols-1 gap-x-6 gap-y-6 border-t border-border/60 pt-8 sm:mt-16 sm:gap-x-8 sm:gap-y-8 sm:pt-10 md:pt-16 lg:mx-0 lg:max-w-none lg:grid-cols-3">
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <Card
@@ -218,9 +217,6 @@ export default function HomePage() {
           )}
         </div>
 
-        <div className="mx-auto mt-16 max-w-md lg:mx-auto">
-          <DonateBox compact />
-        </div>
       </div>
     </div>
   );

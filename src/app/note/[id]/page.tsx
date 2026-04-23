@@ -169,7 +169,7 @@ export default function NotePage() {
 
   if (loading) {
     return (
-      <div className="mx-auto flex h-[calc(100dvh-64px)] max-w-xl flex-col items-center justify-center gap-6 px-6 text-center">
+      <div className="mx-auto flex h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] max-w-xl flex-col items-center justify-center gap-6 px-4 sm:px-6 text-center">
         <div className="flex size-16 items-center justify-center rounded-2xl bg-muted shadow-inner animate-pulse">
           <FileText className="size-8 text-muted-foreground" />
         </div>
@@ -185,9 +185,9 @@ export default function NotePage() {
   const hasImages = note.images.length > 0;
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-64px)] max-w-7xl flex-col gap-4 px-4 py-6">
+    <div className="mx-auto flex h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] max-w-7xl flex-col gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <Button
             asChild
@@ -205,9 +205,9 @@ export default function NotePage() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 scrollbar-none">
           {/* Sync scroll toggle */}
-          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/50">
+          <label className="flex cursor-pointer items-center gap-2 rounded-full border border-border/60 bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/50 shrink-0">
             <input
               type="checkbox"
               checked={syncEnabled}
@@ -221,7 +221,7 @@ export default function NotePage() {
             variant="ghost"
             size="sm"
             onClick={handleRevert}
-            className="rounded-full text-xs font-semibold"
+            className="rounded-full text-xs font-semibold shrink-0"
           >
             <RotateCcw className="mr-1.5 size-3.5" />
             Revert
@@ -231,10 +231,11 @@ export default function NotePage() {
             variant="ghost"
             size="sm"
             onClick={() => navigator.clipboard.writeText(markdown)}
-            className="rounded-full text-xs font-semibold"
+            className="rounded-full text-xs font-semibold shrink-0"
           >
             <Link2 className="mr-1.5 size-3.5" />
-            Copy Markdown
+            <span className="hidden sm:inline">Copy Markdown</span>
+            <span className="sm:hidden">Copy</span>
           </Button>
 
           <ThemePanel
@@ -258,7 +259,7 @@ export default function NotePage() {
             variant="ghost"
             size="sm"
             onClick={handleDelete}
-            className="rounded-full text-xs font-semibold text-destructive hover:text-destructive"
+            className="rounded-full text-xs font-semibold text-destructive hover:text-destructive shrink-0"
           >
             <Trash2 className="mr-1.5 size-3.5" />
             Delete
@@ -358,7 +359,7 @@ export default function NotePage() {
 
 function ExpiredNoteState() {
   return (
-    <div className="mx-auto flex h-[calc(100dvh-64px)] max-w-xl flex-col items-center justify-center gap-6 px-6 text-center">
+    <div className="mx-auto flex h-[calc(100dvh-4rem)] sm:h-[calc(100dvh-5rem)] max-w-xl flex-col items-center justify-center gap-6 px-4 sm:px-6 text-center">
       <div className="flex size-16 items-center justify-center rounded-2xl bg-muted shadow-inner">
         <FileText className="size-8 text-muted-foreground" />
       </div>

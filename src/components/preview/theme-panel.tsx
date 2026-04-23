@@ -175,7 +175,7 @@ export function ThemePanel({ theme, onChange, title, markdown }: ThemePanelProps
             className="fixed inset-0 z-40"
             onClick={() => setOpen(false)}
           />
-          <Card className="absolute right-0 top-full z-50 mt-2 w-80 shadow-xl">
+          <Card className="absolute right-0 top-full z-50 mt-2 w-[calc(100vw-2rem)] sm:w-80 shadow-xl">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="flex items-center gap-2 text-sm">
                 <Palette className="size-4 text-muted-foreground" />

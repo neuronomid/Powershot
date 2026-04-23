@@ -14,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { TermsAcceptance, useTermsAccepted } from "@/components/terms-acceptance";
 import { Filmstrip } from "@/components/upload/filmstrip";
 import { UploadSurface } from "@/components/upload/upload-surface";
 import { ProgressPanel } from "@/components/pipeline/progress-panel";
@@ -32,6 +33,7 @@ import { DebugPanel, useDebugPanel } from "@/components/debug-panel";
 
 export default function NewNotePage() {
   const router = useRouter();
+  const { accepted, accept: acceptTerms } = useTermsAccepted();
   const [title, setTitle] = useState("");
   const [images, setImages] = useState<StagedImage[]>([]);
   const [autoOrderIds, setAutoOrderIds] = useState<string[]>([]);
@@ -159,9 +161,13 @@ export default function NewNotePage() {
       images.some((img, idx) => autoOrderIds[idx] !== img.id));
 
   return (
-    <UploadSurface onFilesAdded={handleFilesAdded}>
+    <>
+      {!accepted && (
+        <TermsAcceptance onAccept={acceptTerms} />
+      )}
+      <UploadSurface onFilesAdded={handleFilesAdded}>
       {({ openFilePicker }) => (
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-10 px-6 py-12 sm:py-20 animate-in fade-in duration-700">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:gap-10 sm:px-6 sm:py-12 md:py-20 animate-in fade-in duration-700">
           <nav className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Link href="/" className="hover:text-foreground transition-colors">
               Dashboard
@@ -242,7 +248,7 @@ export default function NewNotePage() {
                 </Alert>
               )}
 
-              <div className="flex items-center justify-between border-b border-border/40 pb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-4">
                 <div className="flex items-center gap-4">
                   <h2 className="text-base font-semibold text-foreground">
                     Staged screenshots
@@ -387,7 +393,7 @@ export default function NewNotePage() {
             </div>
           )}
 
-          <div className="sticky bottom-8 z-30 mt-auto flex items-center justify-end gap-4 rounded-2xl border border-border/40 bg-background/80 p-4 shadow-2xl backdrop-blur-xl transition-all">
+          <div className="sticky bottom-4 sm:bottom-8 z-30 mt-auto flex items-center justify-between gap-2 sm:gap-4 rounded-2xl border border-border/40 bg-background/80 p-3 sm:p-4 shadow-2xl backdrop-blur-xl transition-all">
             <p className="mr-auto hidden text-xs font-medium text-muted-foreground sm:block">
               {isRunning
                 ? "Processing your screenshots…"
@@ -400,7 +406,7 @@ export default function NewNotePage() {
             <Button
               asChild
               variant="ghost"
-              className="rounded-full font-semibold"
+              className="rounded-full font-semibold hidden sm:inline-flex"
             >
               <Link href="/">Cancel</Link>
             </Button>
@@ -409,7 +415,7 @@ export default function NewNotePage() {
                 type="button"
                 variant="glossy"
                 onClick={handleReviewNote}
-                className="h-11 rounded-full px-8 text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="h-10 sm:h-11 rounded-full px-6 sm:px-8 text-sm sm:text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 Review note
                 <ChevronRight className="ml-2 size-5" />
@@ -420,7 +426,7 @@ export default function NewNotePage() {
                 variant="glossy"
                 disabled={!hasImages || isRunning}
                 onClick={handleGenerate}
-                className="h-11 rounded-full px-10 text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                className="h-10 sm:h-11 rounded-full px-6 sm:px-10 text-sm sm:text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Sparkles className="mr-2 size-5" />
                 {isRunning ? "Processing…" : "Generate note"}
@@ -431,7 +437,8 @@ export default function NewNotePage() {
           <DebugPanel entries={debugEntries} onClear={debugClear} />
         </div>
       )}
-    </UploadSurface>
+      </UploadSurface>
+    </>
   );
 }
 
@@ -442,7 +449,7 @@ function EmptyState({ onPick }: { onPick: () => void }) {
       <button
         type="button"
         onClick={onPick}
-        className="relative flex h-[400px] w-full flex-col items-center justify-center gap-6 rounded-3xl border-2 border-dashed border-border/60 bg-card/40 transition-all hover:border-primary/40 hover:bg-card/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="relative flex h-[280px] w-full flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed border-border/60 bg-card/40 transition-all hover:border-primary/40 hover:bg-card/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-[400px] sm:gap-6"
       >
         <div className="relative flex size-20 items-center justify-center rounded-2xl bg-muted shadow-inner transition-transform duration-500 group-hover:scale-110">
           <Upload className="size-10 text-muted-foreground transition-colors group-hover:text-primary" />

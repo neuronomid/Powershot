@@ -25,7 +25,7 @@ export const ImagePane = forwardRef<HTMLDivElement, ImagePaneProps>(
     return (
       <div
         ref={ref}
-        className="flex-1 overflow-y-auto rounded-xl border border-border bg-background p-4 space-y-4"
+        className="flex-1 min-h-[40dvh] lg:min-h-0 overflow-y-auto rounded-xl border border-border bg-background p-3 sm:p-4 space-y-4"
       >
         {images.map((img, idx) => (
           <div key={img.id} data-image-index={idx} className="space-y-2">

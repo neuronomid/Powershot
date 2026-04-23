@@ -3,11 +3,12 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { DonateButton } from "@/components/donate-button";
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-50 w-full border-none bg-background/80 backdrop-blur-lg">
-      <div className="mx-auto flex h-20 w-full max-w-7xl items-center justify-between px-6 border-none">
+      <div className="mx-auto flex h-16 sm:h-20 w-full max-w-7xl items-center justify-between px-4 sm:px-6 border-none">
         <Link
           href="/"
           className="flex items-center gap-2.5 transition-opacity hover:opacity-90"
@@ -35,6 +36,7 @@ export function SiteHeader() {
           </span>
         </Link>
         <nav className="flex items-center gap-4 sm:gap-6">
+          <DonateButton />
           <Button
             asChild
             size="sm"

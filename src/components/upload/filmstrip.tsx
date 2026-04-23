@@ -73,7 +73,7 @@ export function Filmstrip({ images, onReorder, onRemove }: FilmstripProps) {
       >
         <SortableContext items={images.map((i) => i.id)} strategy={horizontalListSortingStrategy}>
           <ol
-            className="grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4"
+            className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] sm:grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3 sm:gap-4"
             role="list"
             aria-label="Screenshot order. Use arrow keys or drag to reorder."
           >

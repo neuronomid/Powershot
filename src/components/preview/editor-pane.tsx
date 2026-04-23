@@ -114,7 +114,7 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
       editorProps: {
         attributes: {
           class:
-            "editor-content max-w-none p-6 focus:outline-none min-h-full text-foreground",
+            "editor-content max-w-none p-3 sm:p-6 focus:outline-none min-h-full text-foreground",
         },
       },
       onUpdate: ({ editor }) => {
@@ -147,7 +147,7 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
       return (
         <div
           ref={ref}
-          className="flex-1 overflow-y-auto rounded-xl border border-border bg-muted/20"
+          className="flex-1 min-h-[50dvh] lg:min-h-0 overflow-y-auto rounded-xl border border-border bg-muted/20"
         >
           <div className="space-y-4 p-6">
             <div className="h-8 w-3/4 rounded-lg bg-muted animate-pulse" />
@@ -169,7 +169,7 @@ export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
     return (
       <div
         ref={ref}
-        className="flex-1 overflow-y-auto rounded-xl border border-border bg-background"
+        className="flex-1 min-h-[50dvh] lg:min-h-0 overflow-y-auto rounded-xl border border-border bg-background"
       >
         {themeCss && <style>{themeCss}</style>}
         <EditorContent editor={editor} />
