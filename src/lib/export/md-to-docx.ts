@@ -37,6 +37,19 @@ function ptToHalfPt(pt: number): number {
   return pt * 2;
 }
 
+function withOpacity(hex: string, opacity: number): string {
+  const r = Math.round(
+    parseInt(hex.slice(1, 3), 16) * opacity + 255 * (1 - opacity),
+  );
+  const g = Math.round(
+    parseInt(hex.slice(3, 5), 16) * opacity + 255 * (1 - opacity),
+  );
+  const b = Math.round(
+    parseInt(hex.slice(5, 7), 16) * opacity + 255 * (1 - opacity),
+  );
+  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
 function mdastToDocx(params: {
   root: Root;
   theme: ExportTheme;
@@ -260,7 +273,7 @@ function mdastToDocx(params: {
             children: [],
             border: {
               bottom: {
-                color: PRESET_COLORS[theme.preset].foreground + "33",
+                color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.2),
                 space: 1,
                 style: BorderStyle.SINGLE,
                 size: 6,
@@ -295,10 +308,10 @@ function mdastToDocx(params: {
           new TableCell({
             children: cellChildren.length ? cellChildren : [new Paragraph({ children: [] })],
             borders: {
-              top: { color: PRESET_COLORS[theme.preset].foreground + "30", style: BorderStyle.SINGLE, size: 4 },
-              bottom: { color: PRESET_COLORS[theme.preset].foreground + "30", style: BorderStyle.SINGLE, size: 4 },
-              left: { color: PRESET_COLORS[theme.preset].foreground + "30", style: BorderStyle.SINGLE, size: 4 },
-              right: { color: PRESET_COLORS[theme.preset].foreground + "30", style: BorderStyle.SINGLE, size: 4 },
+              top: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              bottom: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              left: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
+              right: {                 color: withOpacity(PRESET_COLORS[theme.preset].foreground, 0.19), style: BorderStyle.SINGLE, size: 4 },
             },
           }),
         );

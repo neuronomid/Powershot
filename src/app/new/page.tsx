@@ -285,6 +285,26 @@ export default function NewNotePage() {
             />
           )}
 
+          {/* Extraction skeleton during pipeline */}
+          {isRunning && !pipeline.result && (
+            <div className="flex flex-col gap-3 animate-in fade-in duration-500">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
+                  Extracted Markdown
+                </h3>
+              </div>
+              <div className="min-h-[300px] w-full rounded-xl border border-border/60 bg-muted/30 p-4 shadow-inner space-y-3">
+                <div className="h-4 w-3/4 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                <div className="h-4 w-5/6 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-4/5 rounded bg-muted animate-pulse" />
+                <div className="h-4 w-full rounded bg-muted animate-pulse" />
+                <div className="h-4 w-3/5 rounded bg-muted animate-pulse" />
+              </div>
+            </div>
+          )}
+
           {/* Pipeline error */}
           {pipeline.stage === "failed" && pipeline.error && (
             <Alert

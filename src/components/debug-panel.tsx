@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Timer } from "lucide-react";
 
 export type DebugTiming = {
@@ -23,12 +23,16 @@ export function useDebugPanel() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  const log = (label: string, ms: number) => {
+  const log = useCallback((label: string, ms: number) => {
     setEntries((prev) => [...prev, { label, ms }]);
-  };
-  const clear = () => setEntries([]);
+  }, []);
 
-  return { open, setOpen, entries, log, clear };
+  const clear = useCallback(() => setEntries([]), []);
+
+  return useMemo(
+    () => ({ open, setOpen, entries, log, clear }),
+    [open, entries, log, clear],
+  );
 }
 
 export function DebugPanel({

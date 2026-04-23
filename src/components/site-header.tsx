@@ -17,6 +17,7 @@ export function SiteHeader() {
               src="/Logos/Logo5.png"
               alt="Powershot Logo"
               fill
+              sizes="32px"
               className="object-cover dark:hidden"
               priority
             />
@@ -24,6 +25,7 @@ export function SiteHeader() {
               src="/Logos/Logo5-dark.png"
               alt="Powershot Logo"
               fill
+              sizes="32px"
               className="hidden object-cover dark:block"
               priority
             />

@@ -16,6 +16,7 @@ type EditorPaneProps = {
 export const EditorPane = forwardRef<HTMLDivElement, EditorPaneProps>(
   function EditorPane({ markdown, onChange, onFocusChange }, ref) {
     const editor = useEditor({
+      immediatelyRender: false,
       extensions: [
         StarterKit,
         Link.configure({ openOnClick: false }),
