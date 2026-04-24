@@ -13,10 +13,15 @@ import { join } from "node:path";
 import { markdownToHtml } from "@/lib/export/markdown-to-html";
 import { buildThemedHtml } from "@/lib/export/themed-html";
 import { markdownToDocxBuffer } from "@/lib/export/md-to-docx";
+import { deckToTsv } from "@/lib/export/deck-to-tsv";
+import { deckToCsv } from "@/lib/export/deck-to-csv";
+import { buildDeckPdfHtml } from "@/lib/export/deck-to-pdf";
+import { deckToApkg } from "@/lib/export/deck-to-apkg";
 import type { ExportTheme } from "@/lib/theme/types";
 import { PAGE_SIZE_PDF_FORMAT } from "@/lib/theme/types";
 import { MARGIN_MM } from "@/lib/theme/types";
 import { FOOTER_MARKDOWN } from "@/lib/theme/constants";
+import type { Deck, DeckMediaBlob } from "@/lib/flashcard/types";
 import {
   checkRateLimit,
   checkRequestSize,
@@ -24,21 +29,70 @@ import {
   createSizeLimitResponse,
 } from "@/lib/rate-limit";
 
-const ALLOWED_FORMATS = ["pdf", "docx", "md"] as const;
-type ExportFormat = (typeof ALLOWED_FORMATS)[number];
+const NOTE_FORMATS = ["pdf", "docx", "md"] as const;
+const DECK_FORMATS = ["apkg", "tsv", "csv", "pdf"] as const;
+type NoteExportFormat = (typeof NOTE_FORMATS)[number];
+type DeckExportFormat = (typeof DECK_FORMATS)[number];
 
-function isValidFormat(v: unknown): v is ExportFormat {
-  return typeof v === "string" && ALLOWED_FORMATS.includes(v as ExportFormat);
+function isValidFormat(
+  v: unknown,
+  scope: "note" | "deck",
+): v is NoteExportFormat | DeckExportFormat {
+  if (typeof v !== "string") return false;
+  if (scope === "deck") return DECK_FORMATS.includes(v as DeckExportFormat);
+  return NOTE_FORMATS.includes(v as NoteExportFormat);
 }
 
-async function generatePdf(params: {
-  markdown: string;
-  title: string;
+function invalidFormatMessage(scope: "note" | "deck"): string {
+  if (scope === "deck") {
+    return "Invalid or missing format. Use ?format=apkg, ?format=tsv, ?format=csv, or ?format=pdf&scope=deck";
+  }
+  return "Invalid or missing format. Use ?format=pdf, ?format=docx, or ?format=md";
+}
+
+function sanitizeTheme(theme: unknown): ExportTheme {
+  return {
+    preset: (theme as ExportTheme)?.preset ?? "modern",
+    bodyFont: (theme as ExportTheme)?.bodyFont ?? "Inter",
+    headingFont: (theme as ExportTheme)?.headingFont ?? "Inter",
+    baseSize: (theme as ExportTheme)?.baseSize ?? "medium",
+    lineSpacing: (theme as ExportTheme)?.lineSpacing ?? "1.5",
+    pageSize: (theme as ExportTheme)?.pageSize ?? "us-letter",
+    margins: (theme as ExportTheme)?.margins ?? "standard",
+    includeToc: (theme as ExportTheme)?.includeToc ?? true,
+    includeFooter: (theme as ExportTheme)?.includeFooter ?? false,
+  };
+}
+
+function isDeck(value: unknown): value is Deck {
+  if (!value || typeof value !== "object") return false;
+  const deck = value as Deck;
+  return (
+    typeof deck.id === "string" &&
+    typeof deck.name === "string" &&
+    Array.isArray(deck.cards)
+  );
+}
+
+function normalizeMedia(value: unknown): DeckMediaBlob[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is DeckMediaBlob => {
+    if (!item || typeof item !== "object") return false;
+    const media = item as DeckMediaBlob;
+    return (
+      typeof media.id === "string" &&
+      typeof media.deckId === "string" &&
+      typeof media.mimeType === "string" &&
+      typeof media.dataBase64 === "string"
+    );
+  });
+}
+
+async function generatePdfFromHtml(params: {
+  html: string;
   theme: ExportTheme;
 }): Promise<Buffer> {
-  const { markdown, title, theme } = params;
-  const bodyHtml = await markdownToHtml(markdown);
-  const html = buildThemedHtml({ title, bodyHtml, markdown, theme });
+  const { html, theme } = params;
 
   const isDevelopment = process.env.NODE_ENV === "development";
   const headless = isDevelopment ? true : ("shell" as const);
@@ -78,6 +132,17 @@ async function generatePdf(params: {
   }
 }
 
+async function generatePdf(params: {
+  markdown: string;
+  title: string;
+  theme: ExportTheme;
+}): Promise<Buffer> {
+  const { markdown, title, theme } = params;
+  const bodyHtml = await markdownToHtml(markdown);
+  const html = buildThemedHtml({ title, bodyHtml, markdown, theme });
+  return generatePdfFromHtml({ html, theme });
+}
+
 async function resolveChromiumExecutablePath(
   isDevelopment: boolean,
 ): Promise<string> {
@@ -103,6 +168,42 @@ async function resolveChromiumExecutablePath(
   return chromium.executablePath();
 }
 
+async function generateDeckPdf(deck: Deck): Promise<Buffer> {
+  const html = buildDeckPdfHtml(deck);
+
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const headless = isDevelopment ? true : ("shell" as const);
+  const executablePath = await resolveChromiumExecutablePath(isDevelopment);
+
+  const browser = await puppeteer.launch({
+    args: isDevelopment
+      ? undefined
+      : puppeteer.defaultArgs({ args: chromium.args, headless }),
+    executablePath,
+    headless,
+  });
+
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, {
+      waitUntil: "domcontentloaded",
+      timeout: 15_000,
+    });
+    await Promise.race([
+      page.evaluate(() => document.fonts?.ready.then(() => true) ?? true),
+      new Promise((resolve) => setTimeout(resolve, 3_000)),
+    ]);
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: { top: "20mm", right: "20mm", bottom: "20mm", left: "20mm" },
+    });
+    return Buffer.from(pdfBuffer);
+  } finally {
+    await browser.close();
+  }
+}
+
 export async function POST(request: NextRequest) {
   const sizeCheck = checkRequestSize(request);
   if (!sizeCheck.valid) {
@@ -119,10 +220,12 @@ export async function POST(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const formatParam = searchParams.get("format");
+  const scopeParam = searchParams.get("scope") ?? "note";
+  const scope = scopeParam === "deck" ? "deck" : "note";
 
-  if (!isValidFormat(formatParam)) {
+  if (!isValidFormat(formatParam, scope)) {
     return NextResponse.json(
-      { error: "Invalid or missing format. Use ?format=pdf, ?format=docx, or ?format=md" },
+      { error: invalidFormatMessage(scope) },
       { status: 400 },
     );
   }
@@ -134,6 +237,78 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // ─── Deck scope ───
+  if (scope === "deck") {
+    const { deck, media } = body as {
+      deck?: unknown;
+      media?: unknown;
+    };
+
+    if (!isDeck(deck)) {
+      return NextResponse.json(
+        { error: "deck is required and must be a Deck object" },
+        { status: 400 },
+      );
+    }
+
+    const d = deck;
+
+    try {
+      if (formatParam === "tsv") {
+        const tsv = deckToTsv(d);
+        const encoder = new TextEncoder();
+        return new NextResponse(encoder.encode(tsv), {
+          status: 200,
+          headers: {
+            "Content-Type": "text/tab-separated-values; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${sanitizeFilename(d.name)}.tsv"`,
+          },
+        });
+      }
+
+      if (formatParam === "csv") {
+        const csv = deckToCsv(d);
+        const encoder = new TextEncoder();
+        return new NextResponse(encoder.encode(csv), {
+          status: 200,
+          headers: {
+            "Content-Type": "text/csv; charset=utf-8",
+            "Content-Disposition": `attachment; filename="${sanitizeFilename(d.name)}.csv"`,
+          },
+        });
+      }
+
+      if (formatParam === "pdf") {
+        const pdfBuffer = await generateDeckPdf(d);
+        return new NextResponse(Uint8Array.from(pdfBuffer), {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="${sanitizeFilename(d.name)}.pdf"`,
+          },
+        });
+      }
+
+      // format === "apkg"
+      const mediaBlobs = normalizeMedia(media);
+      const apkgBuffer = await deckToApkg(d, mediaBlobs);
+      return new NextResponse(Buffer.from(apkgBuffer), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": `attachment; filename="${sanitizeFilename(d.name)}.apkg"`,
+        },
+      });
+    } catch (err) {
+      console.error("Deck export error:", err);
+      return NextResponse.json(
+        { error: "Deck export generation failed" },
+        { status: 500 },
+      );
+    }
+  }
+
+  // ─── Note scope ───
   const { markdown, title, theme } = body as {
     markdown?: unknown;
     title?: unknown;
@@ -153,17 +328,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const sanitizedTheme: ExportTheme = {
-    preset: (theme as ExportTheme)?.preset ?? "modern",
-    bodyFont: (theme as ExportTheme)?.bodyFont ?? "Inter",
-    headingFont: (theme as ExportTheme)?.headingFont ?? "Inter",
-    baseSize: (theme as ExportTheme)?.baseSize ?? "medium",
-    lineSpacing: (theme as ExportTheme)?.lineSpacing ?? "1.5",
-    pageSize: (theme as ExportTheme)?.pageSize ?? "us-letter",
-    margins: (theme as ExportTheme)?.margins ?? "standard",
-    includeToc: (theme as ExportTheme)?.includeToc ?? true,
-    includeFooter: (theme as ExportTheme)?.includeFooter ?? false,
-  };
+  const sanitizedTheme = sanitizeTheme(theme);
 
   try {
     if (formatParam === "pdf") {

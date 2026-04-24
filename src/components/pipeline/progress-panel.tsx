@@ -67,7 +67,7 @@ type ProgressPanelProps = {
   jobs: ExtractionJob[];
   onRetry: (imageId: string) => void;
   progress: BatchProgress | null;
-  stage: PipelineStage;
+  stage: PipelineStage | "generating" | "card-deduping";
   totalImages: number;
 };
 

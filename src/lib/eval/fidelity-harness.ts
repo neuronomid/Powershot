@@ -1,3 +1,6 @@
+import { findAnswerTokenSubsetViolations } from "@/lib/flashcard/guardrail";
+import type { FlashcardGenCandidate } from "@/lib/flashcard/types";
+
 /**
  * Extraction fidelity benchmark harness.
  *
@@ -24,6 +27,19 @@ export type FidelityResult = {
   f1: number;
   tokenOverlap: number;
   tokenTotal: number;
+};
+
+export type FlashcardAnswerSubsetFixture = {
+  id: string;
+  name: string;
+  sourceMarkdown: string;
+  cards: FlashcardGenCandidate[];
+};
+
+export type FlashcardAnswerSubsetResult = {
+  fixtureId: string;
+  passed: boolean;
+  violationTokens: string[];
 };
 
 function normalizeTokens(text: string): string[] {
@@ -95,4 +111,35 @@ export function runFidelityHarness(fixtures: FidelityFixture[]): {
     results.reduce((s, r) => s + r.f1, 0) / (results.length || 1);
 
   return { results, averagePrecision, averageRecall, averageF1 };
+}
+
+export function runFlashcardAnswerSubsetHarness(
+  fixtures: FlashcardAnswerSubsetFixture[],
+): {
+  results: FlashcardAnswerSubsetResult[];
+  passed: boolean;
+  violationCount: number;
+} {
+  const results = fixtures.map((fixture) => {
+    const violationTokens = findAnswerTokenSubsetViolations({
+      sourceMarkdown: fixture.sourceMarkdown,
+      cards: fixture.cards,
+    });
+    return {
+      fixtureId: fixture.id,
+      passed: violationTokens.length === 0,
+      violationTokens,
+    };
+  });
+
+  const violationCount = results.reduce(
+    (sum, result) => sum + result.violationTokens.length,
+    0,
+  );
+
+  return {
+    results,
+    passed: results.every((result) => result.passed),
+    violationCount,
+  };
 }

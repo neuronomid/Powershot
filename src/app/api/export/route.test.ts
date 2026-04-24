@@ -8,6 +8,10 @@ const mocks = vi.hoisted(() => ({
   launch: vi.fn(),
   markdownToHtml: vi.fn(),
   buildThemedHtml: vi.fn(),
+  deckToTsv: vi.fn(),
+  deckToCsv: vi.fn(),
+  buildDeckPdfHtml: vi.fn(),
+  deckToApkg: vi.fn(),
 }));
 
 vi.mock("@sparticuz/chromium", () => ({
@@ -36,6 +40,22 @@ vi.mock("@/lib/export/themed-html", () => ({
   buildThemedHtml: mocks.buildThemedHtml,
 }));
 
+vi.mock("@/lib/export/deck-to-tsv", () => ({
+  deckToTsv: mocks.deckToTsv,
+}));
+
+vi.mock("@/lib/export/deck-to-csv", () => ({
+  deckToCsv: mocks.deckToCsv,
+}));
+
+vi.mock("@/lib/export/deck-to-pdf", () => ({
+  buildDeckPdfHtml: mocks.buildDeckPdfHtml,
+}));
+
+vi.mock("@/lib/export/deck-to-apkg", () => ({
+  deckToApkg: mocks.deckToApkg,
+}));
+
 import { POST } from "./route";
 
 function exportRequest(
@@ -53,6 +73,38 @@ function exportRequest(
   }) as unknown as Parameters<typeof POST>[0];
 }
 
+function deck() {
+  return {
+    id: "deck-1",
+    name: "Biology:/ Deck?",
+    createdAt: 1,
+    updatedAt: 1,
+    cards: [],
+    reviewState: {
+      sessionsCompleted: 0,
+      lastReviewedAt: null,
+      currentStreakDays: 0,
+    },
+    preferences: {
+      styles: [],
+      difficulty: "medium",
+      styleAutoPick: true,
+    },
+    _schemaVersion: 1,
+  };
+}
+
+function deckExportRequest(
+  format: string,
+  body: Record<string, unknown> = { deck: deck() },
+): Parameters<typeof POST>[0] {
+  return new Request(`http://localhost/api/export?scope=deck&format=${format}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }) as unknown as Parameters<typeof POST>[0];
+}
+
 describe("POST /api/export", () => {
   beforeEach(() => {
     mocks.chromiumExecutablePath.mockReset();
@@ -60,10 +112,18 @@ describe("POST /api/export", () => {
     mocks.launch.mockReset();
     mocks.markdownToHtml.mockReset();
     mocks.buildThemedHtml.mockReset();
+    mocks.deckToTsv.mockReset();
+    mocks.deckToCsv.mockReset();
+    mocks.buildDeckPdfHtml.mockReset();
+    mocks.deckToApkg.mockReset();
     mocks.chromiumExecutablePath.mockResolvedValue("/tmp/chromium");
     mocks.docx.mockResolvedValue(Buffer.from("docx"));
     mocks.markdownToHtml.mockResolvedValue("<h1>Test note</h1>");
     mocks.buildThemedHtml.mockReturnValue("<html><body>Test note</body></html>");
+    mocks.deckToTsv.mockReturnValue("front\tback\ttags");
+    mocks.deckToCsv.mockReturnValue("front,back,tags");
+    mocks.buildDeckPdfHtml.mockReturnValue("<html><body>Deck</body></html>");
+    mocks.deckToApkg.mockResolvedValue(Uint8Array.from([1, 2, 3]));
   });
 
   it("rejects invalid formats", async () => {
@@ -253,5 +313,100 @@ describe("POST /api/export", () => {
     await expect(response.json()).resolves.toEqual({
       error: "Export generation failed",
     });
+  });
+
+  it("rejects note-only formats for deck exports", async () => {
+    const response = await POST(deckExportRequest("docx"));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Invalid or missing format. Use ?format=apkg, ?format=tsv, ?format=csv, or ?format=pdf&scope=deck",
+    });
+  });
+
+  it("validates deck export bodies", async () => {
+    const response = await POST(deckExportRequest("tsv", { deck: null }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "deck is required and must be a Deck object",
+    });
+  });
+
+  it("returns TSV and CSV deck exports", async () => {
+    const tsv = await POST(deckExportRequest("tsv"));
+    expect(tsv.status).toBe(200);
+    expect(tsv.headers.get("Content-Type")).toBe(
+      "text/tab-separated-values; charset=utf-8",
+    );
+    expect(tsv.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="Biology Deck.tsv"',
+    );
+    await expect(tsv.text()).resolves.toBe("front\tback\ttags");
+    expect(mocks.deckToTsv).toHaveBeenCalledOnce();
+
+    const csv = await POST(deckExportRequest("csv"));
+    expect(csv.status).toBe(200);
+    expect(csv.headers.get("Content-Type")).toBe("text/csv; charset=utf-8");
+    expect(csv.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="Biology Deck.csv"',
+    );
+    await expect(csv.text()).resolves.toBe("front,back,tags");
+    expect(mocks.deckToCsv).toHaveBeenCalledOnce();
+  });
+
+  it("returns APKG deck exports with media", async () => {
+    const media = [
+      {
+        id: "media-1",
+        deckId: "deck-1",
+        mimeType: "image/jpeg",
+        dataBase64: "AQID",
+        createdAt: 1,
+      },
+    ];
+
+    const response = await POST(deckExportRequest("apkg", { deck: deck(), media }));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/octet-stream");
+    expect(response.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="Biology Deck.apkg"',
+    );
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(
+      Uint8Array.from([1, 2, 3]),
+    );
+    expect(mocks.deckToApkg).toHaveBeenCalledExactlyOnceWith(deck(), media);
+  });
+
+  it("renders deck PDF exports through Puppeteer", async () => {
+    const page = {
+      setContent: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(true),
+      pdf: vi.fn().mockResolvedValue(Buffer.from("pdf")),
+    };
+    const browser = {
+      newPage: vi.fn().mockResolvedValue(page),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    mocks.launch.mockResolvedValue(browser);
+
+    const response = await POST(deckExportRequest("pdf"));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("application/pdf");
+    expect(response.headers.get("Content-Disposition")).toBe(
+      'attachment; filename="Biology Deck.pdf"',
+    );
+    expect(mocks.buildDeckPdfHtml).toHaveBeenCalledExactlyOnceWith(deck());
+    expect(page.setContent).toHaveBeenCalledWith(
+      "<html><body>Deck</body></html>",
+      {
+        waitUntil: "domcontentloaded",
+        timeout: 15_000,
+      },
+    );
+    expect(browser.close).toHaveBeenCalledOnce();
   });
 });

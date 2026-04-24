@@ -5,6 +5,8 @@ export const RATE_LIMITS = {
   dedup: { limit: 20, windowSeconds: 3600 },
   review: { limit: 20, windowSeconds: 3600 },
   export: { limit: 30, windowSeconds: 3600 },
+  flashcard: { limit: 30, windowSeconds: 3600 },
+  "flashcard-dedup": { limit: 30, windowSeconds: 3600 },
 } as const;
 
 export type RateLimitRoute = keyof typeof RATE_LIMITS;

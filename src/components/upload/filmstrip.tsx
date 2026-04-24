@@ -29,9 +29,16 @@ type FilmstripProps = {
   onReorder: (next: StagedImage[]) => void;
   onRemove: (id: string) => void;
   onCrop?: (id: string) => void;
+  onImageClick?: (id: string) => void;
 };
 
-export function Filmstrip({ images, onReorder, onRemove, onCrop }: FilmstripProps) {
+export function Filmstrip({
+  images,
+  onReorder,
+  onRemove,
+  onCrop,
+  onImageClick,
+}: FilmstripProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
@@ -87,6 +94,9 @@ export function Filmstrip({ images, onReorder, onRemove, onCrop }: FilmstripProp
                 onMove={moveImage}
                 onRemove={() => onRemove(img.id)}
                 onCrop={onCrop ? () => onCrop(img.id) : undefined}
+                onImageClick={
+                  onImageClick ? () => onImageClick(img.id) : undefined
+                }
               />
             ))}
           </ol>
@@ -103,6 +113,7 @@ type FilmstripItemProps = {
   onMove: (from: number, to: number) => void;
   onRemove: () => void;
   onCrop?: () => void;
+  onImageClick?: () => void;
 };
 
 function FilmstripItem({
@@ -112,6 +123,7 @@ function FilmstripItem({
   onMove,
   onRemove,
   onCrop,
+  onImageClick,
 }: FilmstripItemProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: image.id,
@@ -141,6 +153,42 @@ function FilmstripItem({
       dragHandleRef.current?.focus();
     });
   };
+
+  const previewClassName =
+    "relative group/thumb overflow-hidden rounded-xl bg-muted ring-1 ring-border/40 transition-all group-hover:ring-primary/30";
+
+  const previewContent = (
+    <>
+      {image.previewUrl ? (
+        <Thumbnail src={image.previewUrl} alt={image.file.name} />
+      ) : (
+        <div className="flex h-[120px] w-full items-center justify-center text-xs text-muted-foreground font-medium">
+          Preview unavailable
+        </div>
+      )}
+      {/* PDF badge */}
+      {image.source === "pdf-page" && (
+        <div className="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-md bg-background/80 px-1.5 py-0.5 text-[10px] font-bold text-primary shadow-sm backdrop-blur-sm">
+          <FileText className="size-3" />
+          PDF
+        </div>
+      )}
+      {/* Enhanced badge */}
+      {image.enhanced && (
+        <div className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded-md bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-sm">
+          <Wand2 className="size-3" />
+          Enhanced
+        </div>
+      )}
+      {/* Cropped badge */}
+      {image.croppedRegion && (
+        <div className="absolute bottom-1.5 right-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-sm">
+          Cropped
+        </div>
+      )}
+      <div className="absolute inset-0 bg-primary/5 opacity-0 transition-opacity group-hover/thumb:opacity-100" />
+    </>
+  );
 
   return (
     <li
@@ -185,36 +233,21 @@ function FilmstripItem({
         </div>
       </div>
 
-      <div className="relative group/thumb overflow-hidden rounded-xl bg-muted ring-1 ring-border/40 transition-all group-hover:ring-primary/30">
-        {image.previewUrl ? (
-          <Thumbnail src={image.previewUrl} alt={image.file.name} />
-        ) : (
-          <div className="flex h-[120px] w-full items-center justify-center text-xs text-muted-foreground font-medium">
-            Preview unavailable
-          </div>
-        )}
-        {/* PDF badge */}
-        {image.source === "pdf-page" && (
-          <div className="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-md bg-background/80 px-1.5 py-0.5 text-[10px] font-bold text-primary shadow-sm backdrop-blur-sm">
-            <FileText className="size-3" />
-            PDF
-          </div>
-        )}
-        {/* Enhanced badge */}
-        {image.enhanced && (
-          <div className="absolute top-1.5 right-1.5 flex items-center gap-1 rounded-md bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-sm">
-            <Wand2 className="size-3" />
-            Enhanced
-          </div>
-        )}
-        {/* Cropped badge */}
-        {image.croppedRegion && (
-          <div className="absolute bottom-1.5 right-1.5 rounded-md bg-primary/90 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-sm backdrop-blur-sm">
-            Cropped
-          </div>
-        )}
-        <div className="absolute inset-0 bg-primary/5 opacity-0 transition-opacity group-hover/thumb:opacity-100" />
-      </div>
+      {onImageClick ? (
+        <button
+          type="button"
+          onClick={onImageClick}
+          className={cn(
+            previewClassName,
+            "text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          )}
+          aria-label={`Configure ${image.file.name}`}
+        >
+          {previewContent}
+        </button>
+      ) : (
+        <div className={previewClassName}>{previewContent}</div>
+      )}
 
       <button
         ref={dragHandleRef}

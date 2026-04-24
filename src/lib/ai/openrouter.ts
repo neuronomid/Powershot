@@ -2,9 +2,17 @@ import {
   CODE_EXTRACTION_SYSTEM_PROMPT,
   DEDUP_SYSTEM_PROMPT,
   EXTRACTION_SYSTEM_PROMPT,
+  FLASHCARD_DEDUP_SYSTEM_PROMPT,
+  FLASHCARD_SYSTEM_PROMPT,
   MATH_EXTRACTION_SYSTEM_PROMPT,
   REVIEW_SYSTEM_PROMPT,
 } from "./prompts";
+import type {
+  Difficulty,
+  FlashcardGenCandidate,
+  NoteModel,
+  StyleCount,
+} from "@/lib/flashcard/types";
 
 export const MODEL_CHAIN = [
   "google/gemini-2.5-pro",
@@ -386,4 +394,161 @@ export async function callReview(
   }
 
   return { markdown: revisedMarkdown, warnings };
+}
+
+function parseStrictJson<T>(raw: string): T {
+  const trimmed = raw.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  const candidate = fenced?.[1] ?? trimmed;
+  const objMatch = candidate.match(/[\[{][\s\S]*[\]}]/);
+  const json = objMatch ? objMatch[0] : candidate;
+  return JSON.parse(json) as T;
+}
+
+export async function callFlashcardGen(params: {
+  markdown: string;
+  styles: StyleCount[];
+  difficulty: Difficulty;
+  autoPick: boolean;
+  apiKey: string;
+}): Promise<{ cards: FlashcardGenCandidate[] }> {
+  const { markdown, styles, difficulty, autoPick, apiKey } = params;
+  const url = "https://openrouter.ai/api/v1/chat/completions";
+
+  const requestBlock = JSON.stringify({
+    styles: styles.map((s) => ({ style: s.style, count: s.count })),
+    difficulty,
+    autoPick,
+  });
+
+  const body: OpenRouterRequest = {
+    model: FLASH_MODEL,
+    messages: [
+      { role: "system", content: FLASHCARD_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Generate flashcards from the SOURCE below according to REQUEST.\n\nREQUEST:\n${requestBlock}\n\nSOURCE:\n${markdown}`,
+          },
+        ],
+      },
+    ],
+    temperature: 0.2,
+    max_tokens: 4096,
+  };
+
+  const res = await fetchWithRetry(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://powershot.org",
+      "X-Title": "Powershot",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "Unknown error");
+    throw new Error(
+      `Flashcard generation failed: ${summarizeOpenRouterError(res.status, errText)}`,
+    );
+  }
+
+  const data: OpenRouterResponse = await res.json();
+  if (data.error) {
+    throw new Error(`Flashcard API error: ${data.error.message}`);
+  }
+
+  const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!content) return { cards: [] };
+
+  const parsed = parseStrictJson<{ cards?: unknown }>(content);
+  const rawCards = Array.isArray(parsed.cards) ? parsed.cards : [];
+
+  const cards: FlashcardGenCandidate[] = [];
+  for (const raw of rawCards) {
+    if (!raw || typeof raw !== "object") continue;
+    const r = raw as Record<string, unknown>;
+    const model = r.model === "cloze" ? ("cloze" as NoteModel) : ("basic" as NoteModel);
+    const style = typeof r.style === "string" ? r.style : "basic-qa";
+    const diff = typeof r.difficulty === "string" ? r.difficulty : difficulty;
+    const front = typeof r.front === "string" ? r.front : "";
+    const back = typeof r.back === "string" ? r.back : "";
+    if (!front && !back) continue;
+    cards.push({
+      model,
+      style: style as FlashcardGenCandidate["style"],
+      difficulty: diff as Difficulty,
+      front,
+      back,
+      extra: typeof r.extra === "string" ? r.extra : undefined,
+      tags: Array.isArray(r.tags) ? r.tags.filter((t) => typeof t === "string") as string[] : undefined,
+    });
+  }
+  return { cards };
+}
+
+export async function callFlashcardDedup(params: {
+  pairs: Array<{ candidateIndex: number; candidateText: string; existingTexts: string[] }>;
+  apiKey: string;
+}): Promise<{ duplicateIndices: number[] }> {
+  const { pairs, apiKey } = params;
+  if (pairs.length === 0) return { duplicateIndices: [] };
+
+  const url = "https://openrouter.ai/api/v1/chat/completions";
+
+  const payload = JSON.stringify({ pairs }, null, 2);
+
+  const body: OpenRouterRequest = {
+    model: FLASH_MODEL,
+    messages: [
+      { role: "system", content: FLASHCARD_DEDUP_SYSTEM_PROMPT },
+      {
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: `Identify duplicate candidates given the existing deck cards.\n\n${payload}`,
+          },
+        ],
+      },
+    ],
+    temperature: 0.1,
+    max_tokens: 1024,
+  };
+
+  const res = await fetchWithRetry(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": "https://powershot.org",
+      "X-Title": "Powershot",
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => "Unknown error");
+    throw new Error(
+      `Flashcard dedup failed: ${summarizeOpenRouterError(res.status, errText)}`,
+    );
+  }
+
+  const data: OpenRouterResponse = await res.json();
+  if (data.error) {
+    throw new Error(`Flashcard dedup API error: ${data.error.message}`);
+  }
+
+  const content = data.choices?.[0]?.message?.content?.trim() ?? "";
+  if (!content) return { duplicateIndices: [] };
+
+  const parsed = parseStrictJson<{ duplicateIndices?: unknown }>(content);
+  const indices = Array.isArray(parsed.duplicateIndices)
+    ? parsed.duplicateIndices.filter((n): n is number => typeof n === "number")
+    : [];
+  return { duplicateIndices: indices };
 }

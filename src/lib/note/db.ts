@@ -1,58 +1,15 @@
-import { openDB, type DBSchema, type IDBPDatabase } from "idb";
+import {
+  CURRENT_SCHEMA_VERSION,
+  QuotaExceededError,
+  getDB,
+  isQuotaError,
+  type PersistedNote,
+} from "@/lib/db";
 
-import type { ExportTheme } from "@/lib/theme/types";
-import type { ChunkAnchor, OrderingWarning, ChunkMeta } from "@/lib/pipeline/types";
+export { QuotaExceededError };
+export type { PersistedNote };
 
-export type PersistedNote = {
-  id: string;
-  title: string;
-  createdAt: number;
-  updatedAt: number;
-  markdown: string;
-  extractedMarkdown: string;
-  anchors: ChunkAnchor[];
-  warnings: OrderingWarning[];
-  tokenSubsetViolations: string[] | null;
-  preferences: ExportTheme;
-  chunks: ChunkMeta[];
-  _schemaVersion: number;
-};
-
-interface PowershotDB extends DBSchema {
-  notes: {
-    key: string;
-    value: PersistedNote;
-  };
-}
-
-const DB_NAME = "powershot";
 const STORE_NAME = "notes";
-const CURRENT_SCHEMA_VERSION = 2;
-
-let dbPromise: Promise<IDBPDatabase<PowershotDB>> | null = null;
-
-export function getDB(): Promise<IDBPDatabase<PowershotDB>> {
-  if (dbPromise) return dbPromise;
-  dbPromise = openDB<PowershotDB>(DB_NAME, CURRENT_SCHEMA_VERSION, {
-    upgrade(db, oldVersion) {
-      if (oldVersion < 1) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
-      }
-      // v1→v2: add `chunks` field. Existing notes get an empty array.
-      // IndexedDB object stores are schemaless, so no structural migration
-      // is needed—old records simply won't have the field until they're
-      // next saved. The `fromPersisted` helper applies the default.
-    },
-  });
-  return dbPromise;
-}
-
-export class QuotaExceededError extends Error {
-  constructor() {
-    super("Storage quota exceeded. Please delete some older notes to free up space.");
-    this.name = "QuotaExceededError";
-  }
-}
 
 export async function saveNote(note: PersistedNote): Promise<void> {
   try {
@@ -64,17 +21,6 @@ export async function saveNote(note: PersistedNote): Promise<void> {
     }
     throw err;
   }
-}
-
-function isQuotaError(err: unknown): boolean {
-  if (err instanceof Error) {
-    return (
-      err.name === "QuotaExceededError" ||
-      err.message.includes("quota") ||
-      err.message.includes("storage")
-    );
-  }
-  return false;
 }
 
 export async function deleteOldestNote(): Promise<string | null> {

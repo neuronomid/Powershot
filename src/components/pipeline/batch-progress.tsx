@@ -11,13 +11,15 @@ import {
 import type { BatchProgress } from "@/lib/pipeline/types";
 import type { PipelineStage } from "@/lib/pipeline/types";
 
+type ProgressStage = PipelineStage | "generating" | "card-deduping";
+
 type BatchProgressBarProps = {
   progress: BatchProgress;
-  stage: PipelineStage;
+  stage: ProgressStage;
   totalImages: number;
 };
 
-function stageIcon(stage: PipelineStage) {
+function stageIcon(stage: ProgressStage) {
   switch (stage) {
     case "extracting":
       return <Loader2 className="size-4 animate-spin text-primary" aria-hidden="true" />;

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { scoreFidelity, runFidelityHarness } from "./fidelity-harness";
+import {
+  runFidelityHarness,
+  runFlashcardAnswerSubsetHarness,
+  scoreFidelity,
+} from "./fidelity-harness";
 
 describe("scoreFidelity", () => {
   it("returns perfect scores for identical text", () => {
@@ -47,5 +51,62 @@ describe("runFidelityHarness", () => {
     expect(results.results).toHaveLength(2);
     expect(results.averageF1).toBeGreaterThan(0);
     expect(results.averageF1).toBeLessThan(1);
+  });
+});
+
+describe("runFlashcardAnswerSubsetHarness", () => {
+  it("passes fixtures whose answers are source-token subsets", () => {
+    const results = runFlashcardAnswerSubsetHarness([
+      {
+        id: "cards-1",
+        name: "Valid flashcards",
+        sourceMarkdown: "Beta cells secrete insulin.",
+        cards: [
+          {
+            model: "basic",
+            style: "basic-qa",
+            difficulty: "medium",
+            front: "Which hormone is secreted?",
+            back: "insulin",
+            tags: [],
+          },
+        ],
+      },
+    ]);
+
+    expect(results.passed).toBe(true);
+    expect(results.violationCount).toBe(0);
+  });
+
+  it("reports invented answer tokens without scoring question wording", () => {
+    const results = runFlashcardAnswerSubsetHarness([
+      {
+        id: "cards-1",
+        name: "Invalid flashcards",
+        sourceMarkdown: "Beta cells secrete insulin.",
+        cards: [
+          {
+            model: "basic",
+            style: "basic-qa",
+            difficulty: "medium",
+            front: "Which pancreatic hormone is secreted?",
+            back: "insulin glucagon",
+            tags: [],
+          },
+        ],
+      },
+    ]);
+
+    expect(results).toEqual({
+      passed: false,
+      violationCount: 1,
+      results: [
+        {
+          fixtureId: "cards-1",
+          passed: false,
+          violationTokens: ["glucagon"],
+        },
+      ],
+    });
   });
 });
