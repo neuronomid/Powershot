@@ -79,10 +79,14 @@ function isDeliverCaptureMessage(value: unknown): value is {
   );
 }
 
+console.log("[Powershot] app-bridge content script loaded on", window.location.href);
+
 getChrome()?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
   if (!isDeliverCaptureMessage(message)) {
     return undefined;
   }
+
+  console.log("[Powershot] app-bridge received capture payload with", message.payload.images.length, "image(s)");
 
   const payload = message.payload;
   const captureId = payload.captureId;

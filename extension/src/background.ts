@@ -331,46 +331,70 @@ async function findExistingPowershotTab() {
   }
 }
 
-async function openOrFocusPowershotTab(): Promise<number> {
+async function openOrFocusPowershotTab(): Promise<{
+  tabId: number;
+  windowId?: number;
+  created: boolean;
+}> {
   const browserChrome = requireChromeApi();
   const existing = await findExistingPowershotTab();
   if (existing?.id) {
-    await browserChrome.tabs.update(existing.id, { active: true });
-    if (existing.windowId !== undefined && browserChrome.windows?.update) {
-      await browserChrome.windows
-        .update(existing.windowId, { focused: true })
-        .catch(() => undefined);
-    }
-    return existing.id;
+    return { tabId: existing.id, windowId: existing.windowId, created: false };
   }
 
+  // Open inactive so the popup keeps focus until delivery completes and the
+  // user can see any errors. Activation happens after a successful handoff.
   const tab = await browserChrome.tabs.create({
     url: buildNewNoteUrl(),
-    active: true,
+    active: false,
   });
   if (!tab?.id) {
     throw new Error("Could not open the Powershot tab.");
   }
-  return tab.id;
+  return { tabId: tab.id, windowId: tab.windowId, created: true };
+}
+
+async function activatePowershotTab(tabId: number, windowId?: number) {
+  const browserChrome = requireChromeApi();
+  try {
+    await browserChrome.tabs.update(tabId, { active: true });
+  } catch {
+    // Tab may have been closed by the user; ignore.
+  }
+  if (windowId !== undefined && browserChrome.windows?.update) {
+    await browserChrome.windows
+      .update(windowId, { focused: true })
+      .catch(() => undefined);
+  }
 }
 
 async function deliverBatch(tabId: number, payload: PowershotCaptureMessage) {
   const browserChrome = requireChromeApi();
   const deadline = Date.now() + DELIVERY_TIMEOUT_MS;
   let lastError: unknown = null;
+  let attempts = 0;
 
   while (Date.now() < deadline) {
+    attempts += 1;
     try {
       const response = await browserChrome.tabs.sendMessage(tabId, {
         type: POWERSHOT_DELIVER_CAPTURE,
         payload,
       });
       if (response?.ok) {
+        console.log("[Powershot] delivery succeeded after", attempts, "attempt(s)");
         return;
       }
       lastError = new Error(response?.error || "Powershot bridge declined the capture.");
+      console.log("[Powershot] delivery attempt", attempts, "declined:", response);
     } catch (error) {
       lastError = error;
+      console.log(
+        "[Powershot] delivery attempt",
+        attempts,
+        "failed:",
+        error instanceof Error ? error.message : error,
+      );
     }
     await delay(DELIVERY_POLL_MS);
   }
@@ -387,8 +411,23 @@ async function sendBatch() {
   }
 
   const payload = buildBatchPayload(state.items);
-  const tabId = await openOrFocusPowershotTab();
-  await deliverBatch(tabId, payload);
+  const target = await openOrFocusPowershotTab();
+  console.log(
+    "[Powershot] delivering",
+    payload.images.length,
+    "capture(s) to tab",
+    target.tabId,
+    target.created ? "(newly opened)" : "(existing)",
+  );
+  try {
+    await deliverBatch(target.tabId, payload);
+  } catch (error) {
+    // Delivery failed — surface the tab so the user sees the app and can retry
+    // manually, and let the error propagate to the popup.
+    await activatePowershotTab(target.tabId, target.windowId);
+    throw error;
+  }
+  await activatePowershotTab(target.tabId, target.windowId);
   const cleared = await clearTray();
   broadcastTray(cleared);
 }
