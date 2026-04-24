@@ -105,13 +105,17 @@ async function pickRegion(tabId: number) {
 
         const overlay = document.createElement("div");
         overlay.id = "powershot-region-overlay";
+        overlay.tabIndex = -1;
         Object.assign(overlay.style, {
           position: "fixed",
           inset: "0",
           zIndex: "2147483647",
           cursor: "crosshair",
           background: "rgba(17, 24, 39, 0.22)",
+          outline: "none",
         });
+
+        const previouslyFocused = document.activeElement as HTMLElement | null;
 
         const box = document.createElement("div");
         Object.assign(box.style, {
@@ -142,13 +146,25 @@ async function pickRegion(tabId: number) {
         overlay.appendChild(box);
         overlay.appendChild(label);
         document.documentElement.appendChild(overlay);
+        try {
+          (previouslyFocused as HTMLElement | null)?.blur?.();
+        } catch {
+          // ignore blur failures on elements that don't support it
+        }
+        try {
+          overlay.focus({ preventScroll: true });
+        } catch {
+          overlay.focus();
+        }
 
         let startX = 0;
         let startY = 0;
         let dragging = false;
 
         const cleanup = (value: RegionSelection | null) => {
+          window.removeEventListener("keydown", onKeyDown, true);
           document.removeEventListener("keydown", onKeyDown, true);
+          overlay.removeEventListener("keydown", onKeyDown, true);
           overlay.removeEventListener("pointerdown", onPointerDown);
           overlay.removeEventListener("pointermove", onPointerMove);
           overlay.removeEventListener("pointerup", onPointerUp);
@@ -157,7 +173,11 @@ async function pickRegion(tabId: number) {
         };
 
         const onKeyDown = (event: KeyboardEvent) => {
-          if (event.key === "Escape") cleanup(null);
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            cleanup(null);
+          }
         };
 
         const onPointerDown = (event: PointerEvent) => {
@@ -207,7 +227,9 @@ async function pickRegion(tabId: number) {
           });
         };
 
+        window.addEventListener("keydown", onKeyDown, true);
         document.addEventListener("keydown", onKeyDown, true);
+        overlay.addEventListener("keydown", onKeyDown, true);
         overlay.addEventListener("pointerdown", onPointerDown);
         overlay.addEventListener("pointermove", onPointerMove);
         overlay.addEventListener("pointerup", onPointerUp);

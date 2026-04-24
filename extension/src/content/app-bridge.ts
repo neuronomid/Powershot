@@ -1,14 +1,36 @@
-import {
-  POWERSHOT_CAPTURE_ACK,
-  isPowershotCaptureMessage,
-  type PowershotCaptureAckMessage,
-  type PowershotCaptureMessage,
+// This file is injected as a classic content script — MV3 does not support
+// ES module imports in content_scripts entries. Keep this file self-contained:
+// use `import type` only (erased at build time) and inline any runtime values.
+
+import type {
+  PowershotCaptureAckMessage,
+  PowershotCaptureMessage,
 } from "../../../src/lib/intake/messages";
-import { getChromeApi } from "../chrome";
-import { POWERSHOT_DELIVER_CAPTURE } from "../constants";
+
+const POWERSHOT_CAPTURE = "POWERSHOT_CAPTURE";
+const POWERSHOT_CAPTURE_ACK = "POWERSHOT_CAPTURE_ACK";
+const POWERSHOT_DELIVER_CAPTURE = "POWERSHOT_DELIVER_CAPTURE";
 
 const ACK_TIMEOUT_MS = 10000;
 const REPOST_INTERVAL_MS = 250;
+
+type RuntimeMessageListener = (
+  message: unknown,
+  sender: unknown,
+  sendResponse: (response: { ok: boolean; error?: string }) => void,
+) => boolean | undefined | void;
+
+type ChromeRuntime = {
+  runtime?: {
+    onMessage?: {
+      addListener(listener: RuntimeMessageListener): void;
+    };
+  };
+};
+
+function getChrome(): ChromeRuntime | undefined {
+  return (globalThis as typeof globalThis & { chrome?: ChromeRuntime }).chrome;
+}
 
 function isCaptureAck(value: unknown): value is PowershotCaptureAckMessage {
   if (!value || typeof value !== "object") return false;
@@ -20,9 +42,32 @@ function isCaptureAck(value: unknown): value is PowershotCaptureAckMessage {
   );
 }
 
-function isDeliverCaptureMessage(
+function isPowershotCaptureMessage(
   value: unknown,
-): value is {
+): value is PowershotCaptureMessage {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Partial<PowershotCaptureMessage>;
+  if (candidate.type !== POWERSHOT_CAPTURE) return false;
+  if (typeof candidate.captureId !== "string") return false;
+  if (!Array.isArray(candidate.images)) return false;
+  return candidate.images.every((image) => {
+    if (!image || typeof image !== "object") return false;
+    const entry = image as {
+      dataUrl?: unknown;
+      title?: unknown;
+      source?: unknown;
+    };
+    return (
+      typeof entry.dataUrl === "string" &&
+      typeof entry.title === "string" &&
+      (entry.source === "visible-tab" ||
+        entry.source === "region" ||
+        entry.source === "sample")
+    );
+  });
+}
+
+function isDeliverCaptureMessage(value: unknown): value is {
   type: typeof POWERSHOT_DELIVER_CAPTURE;
   payload: PowershotCaptureMessage;
 } {
@@ -34,69 +79,63 @@ function isDeliverCaptureMessage(
   );
 }
 
-getChromeApi()?.runtime.onMessage.addListener(
-  (
-    message: unknown,
-    _sender: unknown,
-    sendResponse: (response: { ok: boolean; error?: string }) => void,
-  ) => {
-    if (!isDeliverCaptureMessage(message)) {
-      return undefined;
+getChrome()?.runtime?.onMessage?.addListener((message, _sender, sendResponse) => {
+  if (!isDeliverCaptureMessage(message)) {
+    return undefined;
+  }
+
+  const payload = message.payload;
+  const captureId = payload.captureId;
+  let settled = false;
+  let repostHandle: number | null = null;
+
+  const cleanup = () => {
+    if (repostHandle !== null) {
+      window.clearInterval(repostHandle);
+      repostHandle = null;
     }
+    window.clearTimeout(timeoutHandle);
+    window.removeEventListener("message", onWindowMessage);
+  };
 
-    const payload = message.payload;
-    const captureId = payload.captureId;
-    let settled = false;
-    let repostHandle: number | null = null;
+  const onWindowMessage = (event: MessageEvent) => {
+    if (event.source !== window || event.origin !== window.location.origin) {
+      return;
+    }
+    if (!isCaptureAck(event.data) || event.data.captureId !== captureId) {
+      return;
+    }
+    if (settled) return;
+    settled = true;
+    cleanup();
+    sendResponse({ ok: true });
+  };
 
-    const cleanup = () => {
-      if (repostHandle !== null) {
-        window.clearInterval(repostHandle);
-        repostHandle = null;
-      }
-      window.clearTimeout(timeoutHandle);
-      window.removeEventListener("message", onWindowMessage);
-    };
+  const timeoutHandle = window.setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    sendResponse({
+      ok: false,
+      error: "Powershot did not acknowledge the capture in time.",
+    });
+  }, ACK_TIMEOUT_MS);
 
-    const onWindowMessage = (event: MessageEvent) => {
-      if (event.source !== window || event.origin !== window.location.origin) {
-        return;
-      }
-      if (!isCaptureAck(event.data) || event.data.captureId !== captureId) {
-        return;
-      }
-      if (settled) return;
-      settled = true;
-      cleanup();
-      sendResponse({ ok: true });
-    };
+  window.addEventListener("message", onWindowMessage);
 
-    const timeoutHandle = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      sendResponse({
-        ok: false,
-        error: "Powershot did not acknowledge the capture in time.",
-      });
-    }, ACK_TIMEOUT_MS);
+  const post = () => {
+    try {
+      window.postMessage(payload, window.location.origin);
+    } catch {
+      // Posting can fail during page transitions; the next interval retries.
+    }
+  };
 
-    window.addEventListener("message", onWindowMessage);
-
-    const post = () => {
-      try {
-        window.postMessage(payload, window.location.origin);
-      } catch {
-        // Posting can fail during page transitions; the next interval retries.
-      }
-    };
-
+  post();
+  repostHandle = window.setInterval(() => {
+    if (settled) return;
     post();
-    repostHandle = window.setInterval(() => {
-      if (settled) return;
-      post();
-    }, REPOST_INTERVAL_MS) as unknown as number;
+  }, REPOST_INTERVAL_MS) as unknown as number;
 
-    return true;
-  },
-);
+  return true;
+});
