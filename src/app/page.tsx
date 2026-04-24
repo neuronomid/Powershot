@@ -100,7 +100,7 @@ export default function HomePage() {
   const hasNotes = !loading && notes.length > 0;
 
   return (
-    <div className="relative isolate -mt-20 overflow-hidden pt-20">
+    <div className="relative isolate -mt-20 overflow-x-clip pt-20">
       {/* ------------------------------------------------------------------ */}
       {/* Hero                                                                */}
       {/* ------------------------------------------------------------------ */}
@@ -109,15 +109,15 @@ export default function HomePage() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 -z-10"
         >
-          <div className="absolute left-1/2 top-0 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+          <div className="absolute left-1/2 top-0 h-[520px] w-full max-w-[820px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
           <div className="absolute left-1/4 top-1/3 h-[280px] w-[280px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
         </div>
 
-        <div className="mx-auto max-w-7xl px-4 pb-16 pt-10 sm:px-6 sm:pb-24 sm:pt-20 lg:px-8 lg:pb-32 lg:pt-32">
+        <div className="mx-auto max-w-7xl px-4 pb-12 pt-8 sm:px-6 sm:pb-20 sm:pt-16 lg:px-8 lg:pb-28 lg:pt-28">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3.5 py-1.5 text-xs font-semibold tracking-tight text-muted-foreground backdrop-blur-sm animate-in fade-in duration-700 fill-mode-both">
-              <Shield className="size-3.5 text-primary" />
-              100% private · No signup · Free
+            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1.5 text-[11px] font-semibold tracking-tight text-muted-foreground backdrop-blur-sm animate-in fade-in duration-700 fill-mode-both sm:px-3.5 sm:text-xs">
+              <Shield className="size-3.5 shrink-0 text-primary" />
+              <span>100% private · No signup · Free</span>
             </div>
 
             <h1 className="font-heading text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl lg:text-7xl animate-in slide-in-from-bottom-4 duration-1000 fill-mode-both">
@@ -134,8 +134,8 @@ export default function HomePage() {
               device.
             </p>
 
-            <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-6 animate-in slide-in-from-bottom-12 duration-1000 fill-mode-both delay-300">
-              <div className="relative">
+            <div className="mt-10 flex w-full flex-col items-center justify-center gap-3 sm:w-auto sm:flex-row sm:gap-6 animate-in slide-in-from-bottom-12 duration-1000 fill-mode-both delay-300">
+              <div className="relative w-full sm:w-auto">
                 <div
                   aria-hidden="true"
                   className="absolute -inset-2 rounded-[1.75rem] bg-primary/15 blur-2xl"
@@ -144,7 +144,7 @@ export default function HomePage() {
                   asChild
                   size="lg"
                   variant="glossy"
-                  className="relative isolate h-14 min-w-[16rem] gap-2 overflow-hidden rounded-[1.25rem] px-8 text-base font-bold tracking-tight shadow-2xl shadow-primary/30 ring-1 ring-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-primary/40 sm:h-16 sm:px-10 sm:text-lg"
+                  className="relative isolate h-14 w-full gap-2 overflow-hidden rounded-[1.25rem] px-6 text-sm font-bold tracking-tight shadow-2xl shadow-primary/30 ring-1 ring-primary/30 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-primary/40 sm:h-16 sm:w-auto sm:min-w-[16rem] sm:px-10 sm:text-lg"
                 >
                   <Link href="/new">
                     <span
@@ -152,8 +152,8 @@ export default function HomePage() {
                       className="pointer-events-none absolute inset-0 bg-gradient-to-r from-primary via-primary to-primary/85"
                     />
                     <span className="relative inline-flex items-center justify-center gap-2">
-                      <Sparkles className="size-5" />
-                      Try it free — no signup
+                      <Sparkles className="size-5 shrink-0" />
+                      <span className="text-center">Try it free — no signup</span>
                     </span>
                   </Link>
                 </Button>
@@ -162,7 +162,7 @@ export default function HomePage() {
                 asChild
                 variant="ghost"
                 size="lg"
-                className="h-14 gap-2 rounded-[1.25rem] px-5 text-base font-semibold text-foreground/80 hover:text-foreground sm:h-16"
+                className="h-12 w-full gap-2 rounded-[1.25rem] px-5 text-sm font-semibold text-foreground/80 hover:text-foreground sm:h-16 sm:w-auto sm:text-base"
               >
                 <Link href="/new?sample=true">
                   Try with a sample
@@ -188,7 +188,7 @@ export default function HomePage() {
       {/* How it works                                                        */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-t border-border/40 bg-card/20">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
               How it works
@@ -228,7 +228,7 @@ export default function HomePage() {
       {/* Features                                                            */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
               What you get
@@ -295,7 +295,7 @@ export default function HomePage() {
       {/* Who it's for                                                        */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-t border-border/40 bg-card/20">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="mx-auto max-w-2xl text-center">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
               Who it&apos;s for
@@ -334,7 +334,7 @@ export default function HomePage() {
       {/* Why Powershot (benefits)                                            */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
           <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-2 lg:items-center lg:gap-16">
             <div>
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
@@ -518,8 +518,8 @@ export default function HomePage() {
       {/* Final CTA                                                           */}
       {/* ------------------------------------------------------------------ */}
       <section className="border-t border-border/40">
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-primary/5 p-10 text-center shadow-xl shadow-primary/5 sm:p-16">
+        <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
+          <div className="relative mx-auto max-w-4xl overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-card to-primary/5 p-6 text-center shadow-xl shadow-primary/5 sm:rounded-3xl sm:p-12 md:p-16">
             <div
               aria-hidden="true"
               className="pointer-events-none absolute inset-0"
@@ -528,22 +528,22 @@ export default function HomePage() {
               <div className="absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
             </div>
             <div className="relative">
-              <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+              <h2 className="font-heading text-balance text-2xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
                 Ready to turn screenshots into notes?
               </h2>
-              <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground sm:text-lg">
+              <p className="mx-auto mt-4 max-w-xl text-sm text-muted-foreground sm:text-base md:text-lg">
                 Give it 30 seconds. Drop in a screenshot and see what comes
                 back.
               </p>
-              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                 <Button
                   asChild
                   size="lg"
                   variant="glossy"
-                  className="h-14 min-w-[14rem] gap-2 rounded-xl px-8 text-base font-bold shadow-lg shadow-primary/25 ring-1 ring-primary/25"
+                  className="h-12 w-full gap-2 rounded-xl px-6 text-sm font-bold shadow-lg shadow-primary/25 ring-1 ring-primary/25 sm:h-14 sm:w-auto sm:min-w-[14rem] sm:px-8 sm:text-base"
                 >
                   <Link href="/new">
-                    <Sparkles className="size-5" />
+                    <Sparkles className="size-5 shrink-0" />
                     Create your first note
                   </Link>
                 </Button>
@@ -551,7 +551,7 @@ export default function HomePage() {
                   asChild
                   variant="ghost"
                   size="lg"
-                  className="h-14 gap-2 rounded-xl px-5 text-base font-semibold text-foreground/80 hover:text-foreground"
+                  className="h-12 w-full gap-2 rounded-xl px-5 text-sm font-semibold text-foreground/80 hover:text-foreground sm:h-14 sm:w-auto sm:text-base"
                 >
                   <Link href="/new?sample=true">
                     Or try with a sample
@@ -670,19 +670,19 @@ function BenefitRow({
 
 function BeforeAfterDemo() {
   return (
-    <div className="relative rounded-3xl border border-border/60 bg-card/40 p-3 shadow-2xl shadow-primary/10 backdrop-blur-sm sm:p-5">
+    <div className="relative rounded-2xl border border-border/60 bg-card/40 p-2.5 shadow-2xl shadow-primary/10 backdrop-blur-sm sm:rounded-3xl sm:p-5">
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch sm:gap-4">
         {/* Before: messy screenshot */}
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-background">
-          <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-background sm:rounded-2xl">
+          <div className="flex items-center justify-between border-b border-border/50 px-3 py-2 sm:px-4 sm:py-2.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground sm:gap-2 sm:text-xs sm:tracking-[0.18em]">
               <span className="inline-flex size-1.5 rounded-full bg-muted-foreground/50" />
               Screenshot in
             </div>
             <div className="flex gap-1">
-              <span className="size-2 rounded-full bg-muted-foreground/30" />
-              <span className="size-2 rounded-full bg-muted-foreground/30" />
-              <span className="size-2 rounded-full bg-muted-foreground/30" />
+              <span className="size-1.5 rounded-full bg-muted-foreground/30 sm:size-2" />
+              <span className="size-1.5 rounded-full bg-muted-foreground/30 sm:size-2" />
+              <span className="size-1.5 rounded-full bg-muted-foreground/30 sm:size-2" />
             </div>
           </div>
           <div className="relative aspect-[4/3] w-full bg-gradient-to-br from-muted/40 to-muted/10">
@@ -697,33 +697,33 @@ function BeforeAfterDemo() {
         </div>
 
         {/* Arrow between */}
-        <div className="flex items-center justify-center py-2 sm:py-0">
-          <div className="inline-flex size-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-primary/20 sm:size-14">
-            <Wand2 className="size-5 sm:size-6" />
+        <div className="flex items-center justify-center py-1 sm:py-0">
+          <div className="inline-flex size-11 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 ring-4 ring-primary/20 sm:size-14">
+            <Wand2 className="size-5 rotate-90 sm:size-6 sm:rotate-0" />
           </div>
         </div>
 
         {/* After: structured note */}
-        <div className="overflow-hidden rounded-2xl border border-border/60 bg-background">
-          <div className="flex items-center justify-between border-b border-border/50 px-4 py-2.5">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">
+        <div className="overflow-hidden rounded-xl border border-border/60 bg-background sm:rounded-2xl">
+          <div className="flex items-center justify-between border-b border-border/50 px-3 py-2 sm:px-4 sm:py-2.5">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.15em] text-primary sm:gap-2 sm:text-xs sm:tracking-[0.18em]">
               <span className="inline-flex size-1.5 rounded-full bg-primary" />
-              Structured note out
+              Structured note
             </div>
-            <div className="flex gap-1.5 text-[10px] font-semibold tracking-wider text-muted-foreground">
-              <span className="rounded bg-muted px-1.5 py-0.5">MD</span>
-              <span className="rounded bg-muted px-1.5 py-0.5">PDF</span>
-              <span className="rounded bg-muted px-1.5 py-0.5">DOCX</span>
+            <div className="flex gap-1 text-[9px] font-semibold tracking-wider text-muted-foreground sm:gap-1.5 sm:text-[10px]">
+              <span className="rounded bg-muted px-1 py-0.5 sm:px-1.5">MD</span>
+              <span className="rounded bg-muted px-1 py-0.5 sm:px-1.5">PDF</span>
+              <span className="rounded bg-muted px-1 py-0.5 sm:px-1.5">DOCX</span>
             </div>
           </div>
-          <div className="flex aspect-[4/3] w-full flex-col gap-2.5 overflow-hidden p-5 text-left">
-            <div className="text-sm font-heading font-bold text-foreground">
-              # Distributed Systems: CAP Theorem
+          <div className="flex w-full flex-col gap-2 overflow-hidden p-4 text-left sm:aspect-[4/3] sm:gap-2.5 sm:p-5">
+            <div className="text-sm font-heading font-bold text-foreground sm:text-sm">
+              # CAP Theorem
             </div>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-xs text-muted-foreground sm:text-[11px]">
               ## Core Trade-offs
             </div>
-            <ul className="space-y-1 text-[11px] text-muted-foreground">
+            <ul className="space-y-1.5 text-xs text-muted-foreground sm:space-y-1 sm:text-[11px]">
               <li className="flex gap-1.5">
                 <span className="text-primary">•</span>
                 <span>
@@ -752,8 +752,8 @@ function BeforeAfterDemo() {
                 </span>
               </li>
             </ul>
-            <div className="mt-auto flex items-center gap-2 border-t border-border/40 pt-2 text-[10px] font-semibold text-muted-foreground">
-              <Sparkles className="size-3 text-primary" />
+            <div className="mt-3 flex items-center gap-1.5 border-t border-border/40 pt-2 text-[10px] font-semibold text-muted-foreground sm:mt-auto sm:gap-2">
+              <Sparkles className="size-3 shrink-0 text-primary" />
               Extracted · Never paraphrased
             </div>
           </div>
