@@ -23,6 +23,23 @@ async function filmstripNames(page: Page) {
   );
 }
 
+function collectHydrationErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => {
+    errors.push(error.message);
+  });
+  page.on("console", (message) => {
+    const text = message.text();
+    if (
+      message.type() === "error" &&
+      (/Hydration failed/i.test(text) || /React error #418/i.test(text))
+    ) {
+      errors.push(text);
+    }
+  });
+  return errors;
+}
+
 test.use({
   storageState: {
     cookies: [],
@@ -38,6 +55,22 @@ test.use({
       },
     ],
   },
+});
+
+test("new-note route hydrates cleanly when terms were already accepted", async ({
+  page,
+}) => {
+  const hydrationErrors = collectHydrationErrors(page);
+
+  await page.goto("/new");
+
+  await expect(page.getByRole("heading", { name: "Create a new note" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => "__POWERSHOT_CAPTURE_QUEUE__" in window),
+    )
+    .toBe(true);
+  expect(hydrationErrors).toEqual([]);
 });
 
 test("home, privacy, and new-note routes render the current app shell", async ({ page }) => {
@@ -167,6 +200,8 @@ test("keyboard reorder changes order and reset restores the auto-detected sequen
 test("extension-style captures can be staged through the shared postMessage intake", async ({
   page,
 }) => {
+  const hydrationErrors = collectHydrationErrors(page);
+
   await page.goto("/new?source=extension");
 
   await expect(page.getByText("Waiting for your Chrome extension capture")).toBeVisible();
@@ -207,6 +242,7 @@ test("extension-style captures can be staged through the shared postMessage inta
     "visible-tab-docs-example-com-2.png",
     "visible-tab-docs-example-com-3.png",
   ]);
+  expect(hydrationErrors).toEqual([]);
 });
 
 test("sample onboarding loads staged assets, auto-runs the pipeline, and can be reset", async ({

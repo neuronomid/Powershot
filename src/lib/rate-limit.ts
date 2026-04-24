@@ -49,8 +49,10 @@ export async function checkRateLimit(
       return { allowed: true };
     }
 
-    console.error(`[rate-limit] KV not configured for ${route}.`);
-    return { allowed: false, retryAfterSeconds: 60, reason: "unconfigured" };
+    console.error(
+      `[rate-limit] KV not configured for ${route}. Rate limiting disabled.`,
+    );
+    return { allowed: true };
   }
 
   const ip = getClientIp(request);
