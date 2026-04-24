@@ -129,7 +129,7 @@ export default function RootLayout({
         >
           <ErrorBoundary>
             <SiteHeader />
-            <main className="flex-1">{children}</main>
+            <main className="flex-1 pt-[68px]">{children}</main>
             <SiteFooter />
           </ErrorBoundary>
         </ThemeProvider>

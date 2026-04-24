@@ -30,7 +30,7 @@ describe("SiteHeader", () => {
       "/decks",
     );
     expect(screen.getByRole("link", { name: "Notes" })).toHaveClass(
-      "bg-primary",
+      "active",
     );
     expect(
       screen.getByRole("link", { name: "Create new note" }),
@@ -43,7 +43,7 @@ describe("SiteHeader", () => {
     render(<SiteHeader />);
 
     expect(screen.getByRole("link", { name: "Flashcards" })).toHaveClass(
-      "bg-primary",
+      "active",
     );
     expect(
       screen.getByRole("link", { name: "Create new deck" }),

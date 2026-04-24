@@ -11,7 +11,7 @@ export function HeroSection() {
   const ref = useScrollReveal();
 
   return (
-    <section className="relative min-h-[100svh] overflow-hidden hero-gradient">
+    <section className="relative -mt-[68px] min-h-[100svh] overflow-hidden hero-gradient">
 
       <div
         aria-hidden="true"

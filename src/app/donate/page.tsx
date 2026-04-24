@@ -8,7 +8,7 @@ import { DonateBox } from "@/components/donate/donate-box";
 
 export default function DonatePage() {
   return (
-    <div className="relative isolate -mt-20 overflow-hidden pt-20">
+    <div className="relative isolate overflow-hidden">
       <div className="mx-auto max-w-7xl px-6 pb-24 pt-10 sm:pb-32 lg:px-8 lg:pt-24">
         <Button
           asChild
