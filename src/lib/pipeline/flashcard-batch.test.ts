@@ -28,7 +28,10 @@ vi.mock("nanoid", () => ({
   nanoid: nanoidMock.nanoid,
 }));
 
-import { runFlashcardBatchPipeline } from "./flashcard-batch";
+import {
+  runFlashcardBatchPipeline,
+  runFlashcardGenerationFromExtraction,
+} from "./flashcard-batch";
 
 const NOW = 1_700_000_000_000;
 
@@ -67,6 +70,57 @@ describe("runFlashcardBatchPipeline", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("generates cards from an existing extraction without re-running screenshot extraction", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
+      const body =
+        typeof init?.body === "string"
+          ? (JSON.parse(init.body) as Record<string, unknown>)
+          : {};
+
+      expect(url).toBe("/api/flashcard/generate");
+      expect(body.markdown).toBe("Alpha source");
+
+      return jsonResponse({
+        cards: [
+          {
+            model: "basic",
+            style: "basic-qa",
+            difficulty: "medium",
+            front: "Alpha front",
+            back: "Alpha source",
+          },
+        ],
+        guardrailViolations: [],
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const onGenerateStart = vi.fn();
+    const onGenerateProgress = vi.fn();
+
+    const result = await runFlashcardGenerationFromExtraction({
+      images: [image("one")],
+      markdown: "Alpha source",
+      anchors: [{ imageId: "one", startOffset: 0, endOffset: 12 }],
+      preferences,
+      deckId: "deck-1",
+      callbacks: {
+        onGenerateStart,
+        onGenerateProgress,
+      },
+    });
+
+    expect(batchMocks.runBatchPipeline).not.toHaveBeenCalled();
+    expect(onGenerateStart).toHaveBeenCalledOnce();
+    expect(onGenerateProgress).toHaveBeenLastCalledWith(1, 1);
+    expect(result.cards).toHaveLength(1);
+    expect(result.extractedMarkdown).toBe("Alpha source");
+    expect(result.anchors).toEqual([
+      { imageId: "one", startOffset: 0, endOffset: 12 },
+    ]);
   });
 
   it("generates cards per reviewed image chunk, preserves order, and surfaces guardrail warnings", async () => {

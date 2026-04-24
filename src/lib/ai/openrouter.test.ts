@@ -94,6 +94,63 @@ describe("OpenRouter flashcard calls", () => {
     ).rejects.toThrow();
   });
 
+  it("skips flashcard candidates with invalid model or style values", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        openRouterResponse(
+          JSON.stringify({
+            cards: [
+              {
+                model: "basic",
+                style: "made-up",
+                difficulty: "medium",
+                front: "Bad style?",
+                back: "No",
+              },
+              {
+                model: "custom",
+                style: "basic-qa",
+                difficulty: "medium",
+                front: "Bad model?",
+                back: "No",
+              },
+              {
+                model: "basic",
+                style: "basic-qa",
+                difficulty: "not-real",
+                front: "Valid card?",
+                back: "Yes",
+              },
+            ],
+          }),
+        ),
+      ),
+    );
+
+    await expect(
+      callFlashcardGen({
+        markdown: "Yes.",
+        styles: [{ style: "basic-qa", count: 1 }],
+        difficulty: "easy",
+        autoPick: true,
+        apiKey: "test-key",
+      }),
+    ).resolves.toEqual({
+      cards: [
+        {
+          model: "basic",
+          style: "basic-qa",
+          difficulty: "easy",
+          front: "Valid card?",
+          back: "Yes",
+          extra: undefined,
+          tags: undefined,
+        },
+      ],
+    });
+  });
+
   it("skips the network for empty flashcard dedup batches", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
@@ -104,9 +161,9 @@ describe("OpenRouter flashcard calls", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("sends flashcard dedup requests and keeps only numeric duplicate indices", async () => {
+  it("sends flashcard dedup requests and keeps only valid duplicate indices", async () => {
     const fetchMock = vi.fn(async () =>
-      openRouterResponse(`{"duplicateIndices":[0,"bad",3]}`),
+      openRouterResponse(`{"duplicateIndices":[0,"bad",1.2,3]}`),
     );
     vi.stubGlobal("fetch", fetchMock);
 
@@ -121,7 +178,7 @@ describe("OpenRouter flashcard calls", () => {
       ],
     });
 
-    expect(result).toEqual({ duplicateIndices: [0, 3] });
+    expect(result).toEqual({ duplicateIndices: [0] });
     const body = requestBody(fetchMock);
     expect(body.model).toBe(FLASH_MODEL);
     expect(body.temperature).toBe(0.1);

@@ -2,10 +2,12 @@
 
 import {
   AlertTriangle,
+  Brain,
   ChevronRight,
   FileText,
   ImagePlus,
   Info,
+  Layers,
   Sparkles,
   Upload,
   Wand2,
@@ -25,6 +27,9 @@ import { ProgressPanel } from "@/components/pipeline/progress-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { createNote } from "@/lib/note/store";
+import { createDeck, appendCardsToDeck } from "@/lib/flashcard/store";
+import { DEFAULT_DECK_PREFERENCES } from "@/lib/flashcard/types";
+import { runFlashcardGenerationFromExtraction } from "@/lib/pipeline/flashcard-batch";
 import { useBatchPipeline } from "@/lib/pipeline/useBatchPipeline";
 import { detectAndOrder } from "@/lib/upload/order-inference";
 import type {
@@ -47,6 +52,7 @@ import {
 import { loadSampleCaptureMessage } from "@/lib/sample/library";
 
 type IntakeMode = "extension" | "sample" | null;
+type ExtractionOutcome = "note" | "flashcards" | "both";
 
 const CAPTURE_QUEUE_EVENT = "powershot:capture-queued";
 
@@ -82,6 +88,12 @@ function NewNotePageInner() {
   const [cropImageId, setCropImageId] = useState<string | null>(null);
   const [intakeMode, setIntakeMode] = useState<IntakeMode>(null);
   const [pendingAutoRun, setPendingAutoRun] = useState(false);
+  const [outcomeAction, setOutcomeAction] = useState<ExtractionOutcome | null>(null);
+  const [outcomeError, setOutcomeError] = useState<string | null>(null);
+  const [flashcardProgress, setFlashcardProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const imagesRef = useRef<StagedImage[]>([]);
   const handledCaptureIdsRef = useRef(new Set<string>());
   const sampleRequestedRef = useRef(false);
@@ -122,6 +134,11 @@ function NewNotePageInner() {
       dropzoneRejections: Array<{ file: File; reason: string }>,
       options: { skipValidation?: boolean; suggestedTitle?: string } = {},
     ) => {
+      reset();
+      setOutcomeError(null);
+      setOutcomeAction(null);
+      setFlashcardProgress(null);
+
       const fresh: StagedImage[] = [];
       const newRejections: RejectedFile[] = dropzoneRejections.map((r) => ({
         name: r.file.name,
@@ -229,7 +246,7 @@ function NewNotePageInner() {
       setAutoOrderIds(ordered.map((i) => i.id));
       setConfidence(confidence);
     },
-    [enhance, title],
+    [enhance, reset, title],
   );
 
   const handleRemove = useCallback((id: string) => {
@@ -258,6 +275,9 @@ function NewNotePageInner() {
     if (images.length === 0) return;
     reset();
     debugClear();
+    setOutcomeError(null);
+    setOutcomeAction(null);
+    setFlashcardProgress(null);
     await run(images, { enhance });
   }, [images, reset, run, debugClear, enhance]);
 
@@ -279,9 +299,8 @@ function NewNotePageInner() {
     [images, retryJob, enhance],
   );
 
-  const handleReviewNote = useCallback(async () => {
-    if (!pipeline.result) return;
-    const chunks: ChunkMeta[] = pipeline.jobs
+  const buildChunkMetas = useCallback((): ChunkMeta[] => {
+    return pipeline.jobs
       .filter((j) => j.model !== null)
       .map((j) => {
         const imgIndex = images.findIndex((img) => img.id === j.imageId);
@@ -295,6 +314,12 @@ function NewNotePageInner() {
           source: img?.source ?? "screenshot",
         };
       });
+  }, [pipeline.jobs, images]);
+
+  const createNoteFromExtraction = useCallback(async () => {
+    if (!pipeline.result) {
+      throw new Error("Run extraction before creating a note.");
+    }
     const note = await createNote({
       title: title.trim() || "Untitled note",
       images,
@@ -303,11 +328,92 @@ function NewNotePageInner() {
       anchors: pipeline.result.anchors,
       warnings: pipeline.result.warnings,
       tokenSubsetViolations: pipeline.result.tokenSubsetViolations,
-      chunks,
+      chunks: buildChunkMetas(),
       transient: intakeMode === "sample",
     });
-    router.push(`/note/${note.id}`);
-  }, [pipeline.result, pipeline.jobs, images, title, router, intakeMode]);
+    return note;
+  }, [pipeline.result, images, title, buildChunkMetas, intakeMode]);
+
+  const createDeckFromExtraction = useCallback(async () => {
+    if (!pipeline.result) {
+      throw new Error("Run extraction before creating flashcards.");
+    }
+
+    const deck = createDeck({
+      name: title.trim() || "Untitled deck",
+      preferences: DEFAULT_DECK_PREFERENCES,
+    });
+
+    const result = await runFlashcardGenerationFromExtraction({
+      images,
+      markdown: pipeline.result.markdown,
+      anchors: pipeline.result.anchors,
+      preferences: DEFAULT_DECK_PREFERENCES,
+      deckId: deck.id,
+      callbacks: {
+        onGenerateStart: () => {
+          setFlashcardProgress({ done: 0, total: images.length });
+        },
+        onGenerateProgress: (done, total) => {
+          setFlashcardProgress({ done, total });
+        },
+        onCardDedupStart: () => {
+          setFlashcardProgress(null);
+        },
+      },
+    });
+
+    const savedDeck = await appendCardsToDeck(deck.id, result.cards);
+    return savedDeck ?? deck;
+  }, [pipeline.result, images, title]);
+
+  const handleCreateOutcome = useCallback(
+    async (outcome: ExtractionOutcome) => {
+      if (!pipeline.result || outcomeAction) return;
+
+      let noteWasCreated = false;
+      setOutcomeAction(outcome);
+      setOutcomeError(null);
+      setFlashcardProgress(null);
+
+      try {
+        if (outcome === "note") {
+          const note = await createNoteFromExtraction();
+          router.push(`/note/${note.id}`);
+          return;
+        }
+
+        if (outcome === "flashcards") {
+          const deck = await createDeckFromExtraction();
+          router.push(`/decks/${deck.id}`);
+          return;
+        }
+
+        const note = await createNoteFromExtraction();
+        noteWasCreated = Boolean(note.id);
+        const deck = await createDeckFromExtraction();
+        router.push(`/decks/${deck.id}`);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Could not create output.";
+        setOutcomeError(
+          noteWasCreated
+            ? `Note created, but flashcard generation failed: ${message}`
+            : message,
+        );
+      } finally {
+        setOutcomeAction(null);
+        setFlashcardProgress(null);
+      }
+    },
+    [
+      pipeline.result,
+      outcomeAction,
+      createNoteFromExtraction,
+      createDeckFromExtraction,
+      router,
+    ],
+  );
 
   const handleCrop = useCallback((id: string) => {
     setCropImageId(id);
@@ -336,6 +442,9 @@ function NewNotePageInner() {
     setRejections([]);
     setIntakeMode(null);
     setPendingAutoRun(false);
+    setOutcomeAction(null);
+    setOutcomeError(null);
+    setFlashcardProgress(null);
     router.replace("/new");
   }, [clearStagedImages, reset, router]);
 
@@ -464,16 +573,16 @@ function NewNotePageInner() {
               Dashboard
             </Link>
             <ChevronRight className="size-4 opacity-50" />
-            <span className="text-foreground">New note</span>
+            <span className="text-foreground">New extraction</span>
           </nav>
 
           <header className="flex flex-col gap-4">
             <h1 className="font-heading text-4xl font-bold tracking-tight sm:text-5xl">
-              Create a new note
+              Extract from screenshots
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground font-medium leading-relaxed">
-              Order is auto-detected from filenames and metadata. Drop, browse,
-              or paste screenshots below to begin.
+              Drop, browse, or paste screenshots. Extract once, then create a
+              note, flashcards, or both from the same result.
             </p>
           </header>
 
@@ -524,7 +633,7 @@ function NewNotePageInner() {
               </AlertTitle>
               <AlertDescription className="text-muted-foreground font-medium">
                 Review the staged screenshot, adjust the title if needed, then
-                generate the note as usual.
+                extract once and choose a note, flashcards, or both.
               </AlertDescription>
             </Alert>
           )}
@@ -535,14 +644,14 @@ function NewNotePageInner() {
               htmlFor="note-title"
               className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
             >
-              Note title
+              Title
             </label>
             <input
               id="note-title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., Lecture notes — April 22"
+              placeholder="e.g., Biology lecture — April 22"
               className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-lg font-semibold text-foreground shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
           </div>
@@ -783,13 +892,46 @@ function NewNotePageInner() {
             </div>
           )}
 
-          <div className="sticky bottom-4 sm:bottom-8 z-30 mt-auto flex items-center justify-between gap-2 sm:gap-4 rounded-2xl border border-border/40 bg-background/80 p-3 sm:p-4 shadow-2xl backdrop-blur-xl transition-all">
+          {outcomeError && (
+            <Alert
+              variant="destructive"
+              className="animate-in slide-in-from-bottom-2"
+            >
+              <AlertTriangle className="size-4" />
+              <AlertTitle className="font-semibold">
+                Could not create output
+              </AlertTitle>
+              <AlertDescription className="opacity-90">
+                {outcomeError}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {outcomeAction && (
+            <Alert className="border-primary/20 bg-primary/5 shadow-sm animate-in slide-in-from-bottom-2">
+              <Sparkles className="size-4 text-primary" />
+              <AlertTitle className="font-semibold">
+                {outcomeAction === "note"
+                  ? "Creating note"
+                  : outcomeAction === "flashcards"
+                    ? "Creating flashcards"
+                    : "Creating note and flashcards"}
+              </AlertTitle>
+              <AlertDescription className="text-muted-foreground font-medium">
+                {flashcardProgress
+                  ? `Generating cards ${flashcardProgress.done} of ${flashcardProgress.total} from the extracted text.`
+                  : "Using the existing extraction without reading the screenshots again."}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <div className="sticky bottom-4 sm:bottom-8 z-30 mt-auto flex flex-col gap-3 rounded-2xl border border-border/40 bg-background/80 p-3 shadow-2xl backdrop-blur-xl transition-all sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4">
             <p className="mr-auto hidden text-xs font-medium text-muted-foreground sm:block">
               {isRunning
                 ? "Processing your screenshots…"
                 : hasImages
                   ? pipeline.result
-                    ? "Review the extracted Markdown above."
+                    ? "Use this extraction without paying for another screenshot pass."
                     : "Ready to extract text from your screenshots."
                   : "Add screenshots to proceed."}
             </p>
@@ -801,15 +943,38 @@ function NewNotePageInner() {
               <Link href="/">Cancel</Link>
             </Button>
             {pipeline.result ? (
-              <Button
-                type="button"
-                variant="glossy"
-                onClick={handleReviewNote}
-                className="h-10 sm:h-11 rounded-full px-6 sm:px-8 text-sm sm:text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Review note
-                <ChevronRight className="ml-2 size-5" />
-              </Button>
+              <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={Boolean(outcomeAction)}
+                  onClick={() => void handleCreateOutcome("note")}
+                  className="h-10 rounded-full px-4 text-sm font-bold"
+                >
+                  <FileText data-icon="inline-start" />
+                  Create note
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={Boolean(outcomeAction)}
+                  onClick={() => void handleCreateOutcome("flashcards")}
+                  className="h-10 rounded-full px-4 text-sm font-bold"
+                >
+                  <Brain data-icon="inline-start" />
+                  Create flashcards
+                </Button>
+                <Button
+                  type="button"
+                  variant="glossy"
+                  disabled={Boolean(outcomeAction)}
+                  onClick={() => void handleCreateOutcome("both")}
+                  className="h-10 rounded-full px-4 text-sm font-bold shadow-lg shadow-primary/25"
+                >
+                  <Layers data-icon="inline-start" />
+                  Create both
+                </Button>
+              </div>
             ) : (
               <Button
                 type="button"
@@ -819,7 +984,7 @@ function NewNotePageInner() {
                 className="h-10 sm:h-11 rounded-full px-6 sm:px-10 text-sm sm:text-base font-bold shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <Sparkles className="mr-2 size-5" />
-                {isRunning ? "Processing…" : "Generate note"}
+                {isRunning ? "Processing…" : "Extract text"}
               </Button>
             )}
           </div>
@@ -859,11 +1024,11 @@ function EmptyState({ onPick }: { onPick: () => void }) {
         </div>
         <div className="flex flex-col gap-2 px-8 text-center">
           <p className="text-xl font-bold tracking-tight text-foreground">
-            Drop screenshots here to start
+            Drop screenshots here to extract
           </p>
           <p className="mx-auto max-w-md text-sm font-medium text-muted-foreground leading-relaxed">
             Drag files, click to browse, or paste directly from your clipboard.
-            We support PNG, JPG, WebP, HEIC, and PDF.
+            One extraction can become a note, flashcards, or both.
           </p>
         </div>
         <div className="mt-2 flex items-center gap-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
@@ -872,8 +1037,8 @@ function EmptyState({ onPick }: { onPick: () => void }) {
             AI Extraction
           </span>
           <span className="flex items-center gap-1.5">
-            <FileText className="size-3" />
-            PDF &amp; DOCX
+            <Brain className="size-3" />
+            Flashcards
           </span>
         </div>
       </button>

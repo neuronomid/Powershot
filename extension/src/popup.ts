@@ -66,7 +66,7 @@ function renderTray(state: TrayState) {
   }
   if (els.sendLabel) {
     els.sendLabel.textContent =
-      count <= 1 ? "Send to Powershot" : `Send ${count} to Powershot`;
+      count <= 1 ? "Send to extraction" : `Send ${count} to extraction`;
   }
 
   if (count === 0) {
@@ -211,14 +211,14 @@ async function sendBatch() {
   setStatus(
     `Sending ${lastState.items.length} capture${
       lastState.items.length === 1 ? "" : "s"
-    } to Powershot…`,
+    } to extraction…`,
   );
   try {
     const response = await sendToBackground({ type: POWERSHOT_SEND_BATCH });
     if (!response?.ok) {
       throw new Error(response?.error || "Send failed.");
     }
-    setStatus("Captures handed off to Powershot.");
+    setStatus("Captures handed off to Powershot extraction.");
     window.close();
   } catch (error) {
     setStatus(error instanceof Error ? error.message : "Send failed.", true);

@@ -41,6 +41,7 @@ import type { Deck, Card } from "@/lib/flashcard/types";
 import { isDue } from "@/lib/flashcard/sm2";
 import { listDeckMedia } from "@/lib/flashcard/media";
 import { useDeckPipeline } from "@/lib/pipeline/useDeckPipeline";
+import type { FlashcardBatchResult } from "@/lib/pipeline/flashcard-batch";
 import { detectAndOrder } from "@/lib/upload/order-inference";
 import type { StagedImage } from "@/lib/upload/types";
 import { isAcceptedImage, isPdfFile, MAX_IMAGES_PER_NOTE } from "@/lib/upload/validation";
@@ -61,6 +62,7 @@ export default function DeckDetailPage() {
   const [resumeError, setResumeError] = useState<string | null>(null);
   const [now] = useState(() => Date.now());
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const appliedResumeResultRef = useRef<FlashcardBatchResult | null>(null);
 
   const { state: pipeline, run, reset } = useDeckPipeline();
   const isResuming =
@@ -152,7 +154,7 @@ export default function DeckDetailPage() {
 
   const handleFileSelect = useCallback(
     async (files: File[]) => {
-      if (!deck) return;
+      if (!deck || isResuming) return;
       setResumeError(null);
       setQuotaError(false);
 
@@ -215,21 +217,33 @@ export default function DeckDetailPage() {
         return;
       }
 
-      const { ordered } = await detectAndOrder(fresh);
+      try {
+        const { ordered } = await detectAndOrder(fresh);
 
-      reset();
-      await run({
-        images: ordered,
-        preferences: deck.preferences,
-        existingCards: deck.cards.map((c) => ({ front: c.front, back: c.back })),
-        deckId: deck.id,
-      });
+        reset();
+        await run({
+          images: ordered,
+          preferences: deck.preferences,
+          existingCards: deck.cards.map((c) => ({ front: c.front, back: c.back })),
+          deckId: deck.id,
+        });
+      } finally {
+        for (const image of fresh) {
+          URL.revokeObjectURL(image.objectUrl);
+          if (image.originalObjectUrl && image.originalObjectUrl !== image.objectUrl) {
+            URL.revokeObjectURL(image.originalObjectUrl);
+          }
+        }
+      }
     },
-    [deck, reset, run],
+    [deck, isResuming, reset, run],
   );
 
   useEffect(() => {
     if (pipeline.stage !== "completed" || !pipeline.result || !deck) return;
+    if (appliedResumeResultRef.current === pipeline.result) return;
+    appliedResumeResultRef.current = pipeline.result;
+
     appendCardsToDeck(deck.id, pipeline.result.cards)
       .then((updated) => {
         if (updated) setDeck(updated);
@@ -367,20 +381,15 @@ export default function DeckDetailPage() {
             }}
           />
           <Button
-            asChild
+            type="button"
             variant="outline"
             size="sm"
             disabled={isResuming}
             className="rounded-full font-semibold"
+            onClick={() => fileInputRef.current?.click()}
           >
-            <label
-              htmlFor="resume-upload"
-              className="cursor-pointer"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <ImagePlus className="mr-1.5 size-4" />
-              {isResuming ? "Processing…" : "Add screenshots"}
-            </label>
+            <ImagePlus className="mr-1.5 size-4" />
+            {isResuming ? "Processing…" : "Add screenshots"}
           </Button>
           {resumeError && (
             <span className="text-xs text-destructive font-medium">

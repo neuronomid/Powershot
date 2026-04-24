@@ -1,7 +1,7 @@
 import type { PowershotCaptureMessage } from "../../src/lib/intake/messages";
 import { POWERSHOT_CAPTURE } from "../../src/lib/intake/messages";
 import {
-  buildNewNoteUrl,
+  buildExtractionUrl,
   PRIMARY_APP_URL,
   POWERSHOT_CAPTURE_REGION,
   POWERSHOT_CAPTURE_VISIBLE,
@@ -345,7 +345,7 @@ async function openOrFocusPowershotTab(): Promise<{
   // Open inactive so the popup keeps focus until delivery completes and the
   // user can see any errors. Activation happens after a successful handoff.
   const tab = await browserChrome.tabs.create({
-    url: buildNewNoteUrl(),
+    url: buildExtractionUrl(),
     active: false,
   });
   if (!tab?.id) {

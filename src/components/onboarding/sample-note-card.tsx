@@ -19,7 +19,7 @@ export function SampleNoteCard() {
         <div className="space-y-5">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-primary">
             <FlaskConical className="size-3.5" />
-            Sample Note
+            Sample Extraction
           </div>
           <div className="space-y-3">
             <h3 className="font-heading text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
@@ -28,7 +28,8 @@ export function SampleNoteCard() {
             <p className="max-w-xl text-sm font-medium leading-6 text-muted-foreground sm:text-base">
               Load a lecture slide, docs page, Slack thread, and article into
               the pipeline instantly. It uses the same intake path as the
-              Chrome extension, then auto-runs the note generation flow.
+              Chrome extension, then auto-runs extraction so you can choose a
+              note, flashcards, or both.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

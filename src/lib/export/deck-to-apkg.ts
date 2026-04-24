@@ -1,5 +1,6 @@
 import initSqlJs from "sql.js";
 import JSZip from "jszip";
+import { join } from "node:path";
 import type { Card, Deck, DeckMediaBlob } from "@/lib/flashcard/types";
 
 const BASIC_MODEL_ID = 1735680000000;
@@ -232,7 +233,12 @@ export async function deckToApkg(
   deck: Deck,
   mediaBlobs: DeckMediaBlob[],
 ): Promise<Uint8Array> {
-  const SQL = await initSqlJs();
+  const SQL = await initSqlJs({
+    locateFile: (file: string) =>
+      file.endsWith(".wasm")
+        ? join(process.cwd(), "node_modules", "sql.js", "dist", file)
+        : file,
+  });
   const db = new SQL.Database();
   const mediaEntries = buildMediaEntries(deck, mediaBlobs);
 

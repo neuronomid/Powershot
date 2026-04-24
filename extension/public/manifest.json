@@ -2,8 +2,8 @@
   "manifest_version": 3,
   "name": "Powershot",
   "short_name": "Powershot",
-  "description": "Stack screenshots in a tray and send them to Powershot as one batch.",
-  "version": "0.2.0",
+  "description": "Stack screenshots in a tray and extract once for notes, flashcards, or both.",
+  "version": "0.3.0",
   "homepage_url": "https://powershot.org",
   "action": {
     "default_popup": "popup.html",

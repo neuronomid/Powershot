@@ -65,6 +65,21 @@ export type FlashcardBatchInput = {
   enhance?: boolean;
 };
 
+export type FlashcardGenerationInput = {
+  images: StagedImage[];
+  markdown: string;
+  anchors: ChunkAnchor[];
+  preferences: DeckPreferences;
+  perImageOverrides?: PerImageOverride[];
+  existingCards?: Array<{ front: string; back: string }>;
+  deckId: string;
+  signal?: AbortSignal;
+  callbacks?: Pick<
+    FlashcardBatchCallbacks,
+    "onGenerateStart" | "onGenerateProgress" | "onCardDedupStart"
+  >;
+};
+
 export type FlashcardBatchResult = {
   cards: Card[];
   dedupedAway: number;
@@ -161,7 +176,34 @@ export async function runFlashcardBatchPipeline(
     },
   });
 
-  const { markdown, anchors } = extractionResult;
+  return runFlashcardGenerationFromExtraction({
+    images,
+    markdown: extractionResult.markdown,
+    anchors: extractionResult.anchors,
+    preferences,
+    perImageOverrides,
+    existingCards,
+    deckId,
+    signal,
+    callbacks,
+  });
+}
+
+export async function runFlashcardGenerationFromExtraction(
+  input: FlashcardGenerationInput,
+): Promise<FlashcardBatchResult> {
+  const {
+    images,
+    markdown,
+    anchors,
+    preferences,
+    perImageOverrides,
+    existingCards,
+    deckId,
+    signal,
+    callbacks,
+  } = input;
+
   const now = Date.now();
 
   // ─── Phase B: Per-image flashcard generation ───
@@ -213,8 +255,6 @@ export async function runFlashcardBatchPipeline(
       if (signal?.aborted) return;
       if (!res.ok) {
         console.error(`[flashcard-batch] gen HTTP ${res.status} for image ${img.id}`);
-        completedImages++;
-        callbacks?.onGenerateProgress?.(completedImages, imagesToProcess.length);
         return;
       }
       const data = (await res.json()) as {

@@ -32,6 +32,7 @@ export default function ReviewPage() {
   const [lastAction, setLastAction] = useState<{
     cardId: string;
     previousScheduler: Card["scheduler"];
+    grade: ReviewGrade;
   } | null>(null);
   const [finished, setFinished] = useState(false);
 
@@ -69,6 +70,7 @@ export default function ReviewPage() {
       setLastAction({
         cardId: currentCard.id,
         previousScheduler,
+        grade,
       });
 
       const updated = await updateCardInDeck(deck.id, currentCard.id, {
@@ -89,13 +91,14 @@ export default function ReviewPage() {
           now,
           deck.reviewState.currentStreakDays,
         );
-        await updateDeck(deck.id, {
+        const reviewedDeck = await updateDeck(deck.id, {
           reviewState: {
             sessionsCompleted,
             lastReviewedAt,
             currentStreakDays,
           },
         });
+        if (reviewedDeck) setDeck(reviewedDeck);
         setFinished(true);
       } else {
         setCurrentIndex((i) => i + 1);
@@ -113,6 +116,9 @@ export default function ReviewPage() {
 
     setLastAction(null);
     setReviewedCount((c) => Math.max(0, c - 1));
+    if (lastAction.grade === "again") {
+      setAgainCount((c) => Math.max(0, c - 1));
+    }
     setCurrentIndex((i) => Math.max(0, i - 1));
     setFlipped(false);
     setFinished(false);
@@ -120,9 +126,7 @@ export default function ReviewPage() {
 
   const handleRestart = useCallback(() => {
     if (!deck) return;
-    const now = Date.now();
-    const due = deck.cards.filter((c) => isDue(c.scheduler, now));
-    setQueue(shuffleArray(due));
+    setQueue(shuffleArray(deck.cards));
     setCurrentIndex(0);
     setFlipped(false);
     setReviewedCount(0);

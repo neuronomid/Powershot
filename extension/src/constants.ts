@@ -11,6 +11,8 @@ export const POWERSHOT_TRAY_CLEAR = "POWERSHOT_TRAY_CLEAR";
 export const POWERSHOT_TRAY_GET = "POWERSHOT_TRAY_GET";
 export const POWERSHOT_TRAY_UPDATED = "POWERSHOT_TRAY_UPDATED";
 
-export function buildNewNoteUrl() {
+export function buildExtractionUrl() {
   return `${PRIMARY_APP_URL}/new?source=extension`;
 }
+
+export const buildNewNoteUrl = buildExtractionUrl;

@@ -13,6 +13,7 @@ import type {
   NoteModel,
   StyleCount,
 } from "@/lib/flashcard/types";
+import { ALL_FLASHCARD_STYLES } from "@/lib/flashcard/types";
 
 export const MODEL_CHAIN = [
   "google/gemini-2.5-pro",
@@ -21,6 +22,14 @@ export const MODEL_CHAIN = [
 ] as const;
 
 export const FLASH_MODEL = "google/gemini-2.5-flash";
+
+const VALID_FLASHCARD_STYLES = new Set<string>(ALL_FLASHCARD_STYLES);
+const VALID_DIFFICULTIES = new Set<string>([
+  "easy",
+  "medium",
+  "challenging",
+]);
+const VALID_NOTE_MODELS = new Set<string>(["basic", "cloze"]);
 
 const DEFAULT_FETCH_TIMEOUT_MS = 25_000;
 const DEFAULT_MAX_RETRIES = 1;
@@ -472,15 +481,22 @@ export async function callFlashcardGen(params: {
   for (const raw of rawCards) {
     if (!raw || typeof raw !== "object") continue;
     const r = raw as Record<string, unknown>;
-    const model = r.model === "cloze" ? ("cloze" as NoteModel) : ("basic" as NoteModel);
-    const style = typeof r.style === "string" ? r.style : "basic-qa";
-    const diff = typeof r.difficulty === "string" ? r.difficulty : difficulty;
+    if (typeof r.model !== "string" || !VALID_NOTE_MODELS.has(r.model)) {
+      continue;
+    }
+    if (typeof r.style !== "string" || !VALID_FLASHCARD_STYLES.has(r.style)) {
+      continue;
+    }
+    const diff =
+      typeof r.difficulty === "string" && VALID_DIFFICULTIES.has(r.difficulty)
+        ? r.difficulty
+        : difficulty;
     const front = typeof r.front === "string" ? r.front : "";
     const back = typeof r.back === "string" ? r.back : "";
     if (!front && !back) continue;
     cards.push({
-      model,
-      style: style as FlashcardGenCandidate["style"],
+      model: r.model as NoteModel,
+      style: r.style as FlashcardGenCandidate["style"],
       difficulty: diff as Difficulty,
       front,
       back,
@@ -550,5 +566,10 @@ export async function callFlashcardDedup(params: {
   const indices = Array.isArray(parsed.duplicateIndices)
     ? parsed.duplicateIndices.filter((n): n is number => typeof n === "number")
     : [];
-  return { duplicateIndices: indices };
+  const candidateIndices = new Set(pairs.map((p) => p.candidateIndex));
+  return {
+    duplicateIndices: indices.filter(
+      (n) => Number.isInteger(n) && candidateIndices.has(n),
+    ),
+  };
 }

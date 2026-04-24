@@ -15,8 +15,10 @@ Load `extension/dist` as an unpacked extension in Chrome.
 
 Each capture (visible tab or region) is appended to a tray held in
 `chrome.storage.local`. The popup shows the stack of thumbnails; clicking
-**Send N to Powershot** opens (or focuses) `https://powershot.org/new` and
-delivers all images in a single `POWERSHOT_CAPTURE` message.
+**Send N to extraction** opens (or focuses) `https://powershot.org/new` and
+delivers all images in a single `POWERSHOT_CAPTURE` message. The app stages the
+screenshots, extracts once, then lets the user create a note, flashcards, or
+both from the same extraction.
 
 ## Shortcuts
 
