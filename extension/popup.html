@@ -9,21 +9,46 @@
   <body>
     <main class="popup-shell">
       <section class="popup-card">
-        <p class="eyebrow">Chrome extension</p>
-        <h1>Capture directly into Powershot</h1>
-        <p class="subhead">
-          Send the full visible tab or a cropped region into the Powershot web
-          app without saving screenshots first.
-        </p>
+        <header class="header">
+          <p class="eyebrow">Capture tray</p>
+          <h1>Powershot</h1>
+          <p class="subhead">
+            Stack screenshots, then send them to Powershot in one batch.
+          </p>
+        </header>
 
         <div class="actions">
           <button id="capture-visible" class="primary" type="button">
-            Visible tab
+            <span class="btn-label">Capture visible tab</span>
+            <kbd class="kbd">⌥⇧S</kbd>
           </button>
           <button id="capture-region" class="secondary" type="button">
-            Select region
+            <span class="btn-label">Capture region</span>
+            <kbd class="kbd">⌥⇧R</kbd>
           </button>
         </div>
+
+        <div class="tray-header">
+          <span id="tray-count" class="tray-count">0 captures</span>
+          <button
+            id="tray-clear"
+            class="text-button"
+            type="button"
+            hidden
+          >
+            Clear all
+          </button>
+        </div>
+
+        <div id="tray" class="tray" aria-live="polite">
+          <p id="tray-empty" class="tray-empty">
+            No captures yet. Use the buttons above or the keyboard shortcuts.
+          </p>
+        </div>
+
+        <button id="send-batch" class="send" type="button" disabled>
+          <span id="send-label">Send to Powershot</span>
+        </button>
 
         <a
           id="open-app"

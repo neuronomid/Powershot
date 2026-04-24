@@ -2,18 +2,23 @@
   "manifest_version": 3,
   "name": "Powershot",
   "short_name": "Powershot",
-  "description": "Capture the visible tab or a selected region directly into Powershot.",
-  "version": "0.1.0",
+  "description": "Stack screenshots in a tray and send them to Powershot as one batch.",
+  "version": "0.2.0",
   "homepage_url": "https://powershot.org",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Capture to Powershot"
+    "default_title": "Powershot capture tray"
   },
   "background": {
     "service_worker": "assets/background.js",
     "type": "module"
   },
-  "permissions": ["activeTab", "scripting"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "unlimitedStorage"
+  ],
   "host_permissions": [
     "https://powershot.org/*",
     "https://*.powershot.org/*",
@@ -35,7 +40,13 @@
       "suggested_key": {
         "default": "Alt+Shift+S"
       },
-      "description": "Capture the visible tab to Powershot"
+      "description": "Add the visible tab to the Powershot capture tray"
+    },
+    "capture-region": {
+      "suggested_key": {
+        "default": "Alt+Shift+R"
+      },
+      "description": "Add a selected region to the Powershot capture tray"
     }
   },
   "icons": {

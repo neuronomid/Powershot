@@ -7,6 +7,9 @@ import {
 import { getChromeApi } from "../chrome";
 import { POWERSHOT_DELIVER_CAPTURE } from "../constants";
 
+const ACK_TIMEOUT_MS = 10000;
+const REPOST_INTERVAL_MS = 250;
+
 function isCaptureAck(value: unknown): value is PowershotCaptureAckMessage {
   if (!value || typeof value !== "object") return false;
   const candidate = value as Partial<PowershotCaptureAckMessage>;
@@ -24,10 +27,7 @@ function isDeliverCaptureMessage(
   payload: PowershotCaptureMessage;
 } {
   if (!value || typeof value !== "object") return false;
-  const candidate = value as {
-    type?: unknown;
-    payload?: unknown;
-  };
+  const candidate = value as { type?: unknown; payload?: unknown };
   return (
     candidate.type === POWERSHOT_DELIVER_CAPTURE &&
     isPowershotCaptureMessage(candidate.payload)
@@ -44,32 +44,58 @@ getChromeApi()?.runtime.onMessage.addListener(
       return undefined;
     }
 
-    const captureId = message.payload.captureId;
+    const payload = message.payload;
+    const captureId = payload.captureId;
+    let settled = false;
+    let repostHandle: number | null = null;
 
-    const timeoutId = window.setTimeout(() => {
+    const cleanup = () => {
+      if (repostHandle !== null) {
+        window.clearInterval(repostHandle);
+        repostHandle = null;
+      }
+      window.clearTimeout(timeoutHandle);
       window.removeEventListener("message", onWindowMessage);
-      sendResponse({
-        ok: false,
-        error: "Powershot did not acknowledge the capture in time.",
-      });
-    }, 2000);
+    };
 
     const onWindowMessage = (event: MessageEvent) => {
       if (event.source !== window || event.origin !== window.location.origin) {
         return;
       }
-
       if (!isCaptureAck(event.data) || event.data.captureId !== captureId) {
         return;
       }
-
-      window.clearTimeout(timeoutId);
-      window.removeEventListener("message", onWindowMessage);
+      if (settled) return;
+      settled = true;
+      cleanup();
       sendResponse({ ok: true });
     };
 
+    const timeoutHandle = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      sendResponse({
+        ok: false,
+        error: "Powershot did not acknowledge the capture in time.",
+      });
+    }, ACK_TIMEOUT_MS);
+
     window.addEventListener("message", onWindowMessage);
-    window.postMessage(message.payload, window.location.origin);
+
+    const post = () => {
+      try {
+        window.postMessage(payload, window.location.origin);
+      } catch {
+        // Posting can fail during page transitions; the next interval retries.
+      }
+    };
+
+    post();
+    repostHandle = window.setInterval(() => {
+      if (settled) return;
+      post();
+    }, REPOST_INTERVAL_MS) as unknown as number;
 
     return true;
   },
