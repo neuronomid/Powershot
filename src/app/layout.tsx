@@ -52,9 +52,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Powershot — Screenshots into structured notes",
+  metadataBase: new URL("https://powershot.org"),
+  title: "Powershot — Turn screenshots into structured notes instantly",
   description:
-    "Turn a stack of screenshots into a clean, structured, downloadable note. PDF and DOCX, never paraphrased.",
+    "Drop any screenshot and get clean, searchable notes in seconds. Free, no signup, 100% private. Works for students, researchers, and professionals.",
+  keywords: [
+    "screenshot to text",
+    "screenshot to notes",
+    "OCR",
+    "AI notes",
+    "study notes",
+    "meeting notes",
+    "markdown export",
+    "PDF export",
+    "privacy-first",
+  ],
   manifest: "/site.webmanifest?v=3",
   icons: {
     icon: [
@@ -68,6 +80,29 @@ export const metadata: Metadata = {
     ],
     shortcut: ["/favicon.ico?v=3"],
     apple: [{ url: "/apple-touch-icon.png?v=3", sizes: "180x180" }],
+  },
+  openGraph: {
+    type: "website",
+    url: "https://powershot.org",
+    title: "Powershot — Turn screenshots into structured notes instantly",
+    description:
+      "Drop any screenshot and get clean, searchable notes in seconds. Free, no signup, 100% private.",
+    siteName: "Powershot",
+    images: [
+      {
+        url: "/web-app-manifest-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "Powershot",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Powershot — Turn screenshots into structured notes instantly",
+    description:
+      "Drop any screenshot and get clean, searchable notes in seconds. Free, no signup, 100% private.",
+    images: ["/web-app-manifest-512x512.png"],
   },
 };
 

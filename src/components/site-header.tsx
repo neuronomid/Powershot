@@ -3,7 +3,6 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { DonateButton } from "@/components/donate-button";
 
 export function SiteHeader() {
   return (
@@ -36,7 +35,6 @@ export function SiteHeader() {
           </span>
         </Link>
         <nav className="flex shrink-0 items-center gap-1.5 sm:gap-4 md:gap-6">
-          <DonateButton />
           <Button
             asChild
             size="sm"
