@@ -565,6 +565,38 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
 }
 
+/* CTA band buttons — matching design */
+.btn-cta-white {
+  background: #ffffff !important;
+  color: #0d1e38 !important;
+  border: none !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+}
+.btn-cta-white:hover {
+  background: #e8eef8 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.25);
+}
+.btn-cta-outline {
+  background: transparent !important;
+  border: 1.5px solid rgba(15, 23, 42, 0.2) !important;
+  color: rgba(15, 23, 42, 0.7) !important;
+}
+.btn-cta-outline:hover {
+  border-color: rgba(15, 23, 42, 0.4) !important;
+  color: #0d1e38 !important;
+  background: transparent !important;
+}
+.dark .btn-cta-outline {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+}
+.dark .btn-cta-outline:hover {
+  border-color: rgba(255, 255, 255, 0.4) !important;
+  color: #ffffff !important;
+  background: transparent !important;
+}
+
 /* Scrolling sections tighter */
 .section-tight {
   padding-top: 4rem;

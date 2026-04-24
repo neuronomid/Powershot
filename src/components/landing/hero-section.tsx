@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Shield, Sparkles, ArrowRight } from "lucide-react";
+import { Shield, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useScrollReveal } from "@/hooks/use-scroll-reveal";
 import { BeforeAfterDemo } from "./before-after-demo";
@@ -86,7 +86,7 @@ export function HeroSection() {
               asChild
               variant="ghost"
               size="lg"
-              className="h-[52px] w-full gap-2 rounded-full border-[1.5px] border-transparent px-7 text-[15px] font-semibold tracking-[-0.1px] text-foreground/75 hover:text-foreground sm:w-auto dark:border-white/20 dark:text-white/75 dark:hover:text-white"
+              className="btn-cta-outline h-[52px] w-full gap-2 rounded-full px-7 text-[15px] font-semibold tracking-[-0.1px] sm:w-auto"
             >
               <Link href="/new?sample=true">
                 See a sample

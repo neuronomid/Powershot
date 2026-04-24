@@ -1,0 +1,254 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - link "Powershot home" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]: Powershot
+      - navigation [ref=e7]:
+        - generic [ref=e8]:
+          - link "Notes" [ref=e9] [cursor=pointer]:
+            - /url: /
+          - link "Flashcards" [ref=e10] [cursor=pointer]:
+            - /url: /decks
+        - link "Create new note" [ref=e11] [cursor=pointer]:
+          - /url: /new
+          - generic [ref=e12]: + New Note
+        - button "Toggle theme" [ref=e13]
+  - main [ref=e15]:
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e19]:
+          - generic [ref=e20]:
+            - img [ref=e21]
+            - generic [ref=e23]: 100% private · No signup · Free
+          - heading "From Screenshots to organized notes, instantly" [level=1] [ref=e24]:
+            - text: From Screenshots to
+            - generic [ref=e25]: organized notes, instantly
+          - paragraph [ref=e26]: Drop in any screenshot — slides, articles, receipts, dashboards, code. Get clean, searchable notes you can export. No account, ever.
+          - generic [ref=e27]:
+            - link "Try it free — 30 seconds" [ref=e30] [cursor=pointer]:
+              - /url: /new
+              - generic [ref=e31]: Try it free — 30 seconds
+            - link "See a sample" [ref=e32] [cursor=pointer]:
+              - /url: /new?sample=true
+              - text: See a sample
+              - img
+          - paragraph [ref=e33]: Works with PNG, JPG, HEIC, and PDF · Exports to PDF, DOCX, and Markdown
+        - generic [ref=e36]:
+          - generic [ref=e37]:
+            - generic [ref=e38]: "50"
+            - generic [ref=e39]: Images per note
+          - generic [ref=e40]:
+            - generic [ref=e41]: "0"
+            - generic [ref=e42]: Server uploads
+          - generic [ref=e43]:
+            - generic [ref=e44]: "0"
+            - generic [ref=e45]: Accounts needed
+          - generic [ref=e46]:
+            - generic [ref=e47]: "4"
+            - generic [ref=e48]: Export formats
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - generic [ref=e55]: Screenshot in
+            - img "Example lecture slide screenshot" [ref=e62]
+          - img [ref=e65]
+          - generic [ref=e68]:
+            - generic [ref=e69]:
+              - generic [ref=e70]: Structured note
+              - generic [ref=e72]:
+                - generic [ref=e73]: MD
+                - generic [ref=e74]: PDF
+                - generic [ref=e75]: DOCX
+            - generic [ref=e76]:
+              - generic [ref=e77]: "# CAP Theorem"
+              - generic [ref=e78]: "## Core Trade-offs"
+              - list [ref=e79]:
+                - listitem [ref=e80]:
+                  - generic [ref=e81]: •
+                  - generic [ref=e82]: Consistency — every read sees the latest write
+                - listitem [ref=e83]:
+                  - generic [ref=e84]: •
+                  - generic [ref=e85]: Availability — every request returns a response
+                - listitem [ref=e86]:
+                  - generic [ref=e87]: •
+                  - generic [ref=e88]: Partition tolerance — system survives network splits
+              - generic [ref=e89]:
+                - img [ref=e90]
+                - text: Extracted · Never paraphrased
+      - generic [ref=e94]:
+        - generic [ref=e95]:
+          - paragraph [ref=e98]: How it works
+          - heading "From screenshot to note in three steps" [level=2] [ref=e99]
+          - paragraph [ref=e100]: No learning curve. Drop images in, get a structured note back.
+        - generic [ref=e101]:
+          - generic [ref=e102]:
+            - generic [ref=e103]:
+              - generic [ref=e106]: "01"
+              - generic [ref=e108]:
+                - paragraph [ref=e109]: Step one
+                - heading "Drop your screenshots" [level=3] [ref=e110]
+                - paragraph [ref=e111]: Paste, drag, or upload. PNG, JPG, HEIC, or PDF — up to 50 images per note. Order is auto-detected from filenames and metadata.
+            - generic [ref=e118]:
+              - generic [ref=e119]: PNG
+              - generic [ref=e120]: JPG
+              - generic [ref=e121]: HEIC
+              - generic [ref=e122]: PDF
+          - generic [ref=e123]:
+            - generic [ref=e124]:
+              - generic [ref=e127]: "02"
+              - generic [ref=e129]:
+                - paragraph [ref=e130]: Step two
+                - heading "AI extracts & organizes" [level=3] [ref=e131]
+                - paragraph [ref=e132]: Gemini 2.5 Pro reads every image and rebuilds the structure — headings, lists, tables, and code. Your words, never invented.
+            - generic [ref=e134]:
+              - generic [ref=e135]: Extracting structure…
+              - generic [ref=e138]:
+                - generic [ref=e139]:
+                  - generic [ref=e140]: ✓
+                  - text: Headings
+                - generic [ref=e141]:
+                  - generic [ref=e142]: ✓
+                  - text: Lists
+                - generic [ref=e143]:
+                  - generic [ref=e144]: ✓
+                  - text: Tables
+                - generic [ref=e145]:
+                  - generic [ref=e146]: ✓
+                  - text: Code blocks
+          - generic [ref=e147]:
+            - generic [ref=e148]:
+              - generic [ref=e151]: "03"
+              - generic [ref=e152]:
+                - paragraph [ref=e153]: Step three
+                - heading "Edit, search & export" [level=3] [ref=e154]
+                - paragraph [ref=e155]: Polish in a split-pane editor, then export to PDF, DOCX, or Markdown with your chosen theme. Full keyboard shortcuts throughout.
+            - generic [ref=e161]:
+              - generic [ref=e162]: PDF
+              - generic [ref=e163]: DOCX
+              - generic [ref=e164]: Markdown
+      - generic [ref=e166]:
+        - generic [ref=e167]:
+          - paragraph [ref=e170]: Who it's for
+          - heading "If you screenshot things, this is for you" [level=2] [ref=e171]
+        - generic [ref=e172]:
+          - generic [ref=e173]:
+            - generic [ref=e174]: "01"
+            - heading "Students" [level=3] [ref=e175]
+            - paragraph [ref=e176]: Snap lecture slides, get organized study notes you can search and export.
+          - generic [ref=e177]:
+            - generic [ref=e178]: "02"
+            - heading "Researchers" [level=3] [ref=e179]
+            - paragraph [ref=e180]: Capture articles and papers, build a searchable knowledge base in your browser.
+          - generic [ref=e181]:
+            - generic [ref=e182]: "03"
+            - heading "Professionals" [level=3] [ref=e183]
+            - paragraph [ref=e184]: Turn screenshots of meetings, dashboards, or docs into notes you can share.
+          - generic [ref=e185]:
+            - generic [ref=e186]: "04"
+            - heading "Readers" [level=3] [ref=e187]
+            - paragraph [ref=e188]: Save what matters from anything on your screen — without retyping a word.
+      - generic [ref=e191]:
+        - generic [ref=e192]:
+          - paragraph [ref=e195]: Why Powershot
+          - heading "No account. No upload. No excuses." [level=2] [ref=e196]:
+            - text: No account.
+            - text: No upload.
+            - text: No excuses.
+          - paragraph [ref=e197]: Most screenshot-to-notes tools ask you to sign up, upload your data, and trust their cloud. Powershot does the opposite.
+          - generic [ref=e198]:
+            - generic [ref=e199]:
+              - img [ref=e201]
+              - generic [ref=e204]:
+                - heading "100% private" [level=4] [ref=e205]
+                - paragraph [ref=e206]: Your screenshots and notes never leave your browser. No server storage, no account, no tracking.
+            - generic [ref=e207]:
+              - img [ref=e209]
+              - generic [ref=e211]:
+                - heading "No signup, no email" [level=4] [ref=e212]
+                - paragraph [ref=e213]: Open the site, drop a screenshot, get your notes. Nothing to remember, nothing to unsubscribe from.
+            - generic [ref=e214]:
+              - img [ref=e216]
+              - generic [ref=e219]:
+                - heading "Works with anything" [level=4] [ref=e220]
+                - paragraph [ref=e221]: Slides, articles, receipts, chats, code, handwriting — if you can screenshot it, Powershot can read it.
+        - generic [ref=e223]:
+          - generic [ref=e224]:
+            - generic [ref=e225]: "0"
+            - generic [ref=e226]: bytes sent to any server
+          - generic [ref=e227]:
+            - generic [ref=e228]: Local-only
+            - generic [ref=e229]: No server
+            - generic [ref=e230]: IndexedDB
+            - generic [ref=e231]: No tracking
+            - generic [ref=e232]: No cookies
+      - generic [ref=e234]:
+        - generic [ref=e235]:
+          - paragraph [ref=e238]: What you get
+          - heading "Built for the way you actually capture" [level=2] [ref=e239]
+          - paragraph [ref=e240]: A handful of deliberate features — each one pulling its weight.
+        - generic [ref=e241]:
+          - generic [ref=e242]:
+            - img [ref=e244]
+            - heading "Paste, drag, or pick" [level=3] [ref=e247]
+            - paragraph [ref=e248]: Hit Cmd+V anywhere on the upload page, drag a folder of screenshots, or open the file picker. It just works.
+          - generic [ref=e249]:
+            - img [ref=e251]
+            - heading "Never paraphrased" [level=3] [ref=e254]
+            - paragraph [ref=e255]: A token-subset guardrail verifies the AI output is a strict subset of what was in your screenshots. Your words, never invented.
+          - generic [ref=e256]:
+            - img [ref=e258]
+            - heading "Split-pane editor" [level=3] [ref=e264]
+            - paragraph [ref=e265]: Source images on one side, editable Markdown on the other. Sync scroll keeps context tight while you polish.
+          - generic [ref=e266]:
+            - img [ref=e268]
+            - heading "Four themes, fully tunable" [level=3] [ref=e274]
+            - paragraph [ref=e275]: Classic, Modern, Sepia, or Minimal — plus font, size, spacing, margins, and page size. Change once, export everywhere.
+          - generic [ref=e276]:
+            - img [ref=e278]
+            - heading "Export to PDF & DOCX" [level=3] [ref=e281]
+            - paragraph [ref=e282]: Native Word tables and real heading styles — not screenshots of text. Copy Markdown for anywhere else.
+          - generic [ref=e283]:
+            - img [ref=e285]
+            - heading "Private by architecture" [level=3] [ref=e287]
+            - paragraph [ref=e288]: Images flow through memory only. Notes live in your browser's IndexedDB. Nothing persisted server-side, ever.
+          - generic [ref=e289]:
+            - img [ref=e291]
+            - heading "Auto-ordering & dedup" [level=3] [ref=e294]
+            - paragraph [ref=e295]: Screenshots are sorted by filename, EXIF, or capture time, then overlapping seams are stitched back together automatically.
+          - generic [ref=e296]:
+            - img [ref=e298]
+            - heading "PDF and HEIC in" [level=3] [ref=e302]
+            - paragraph [ref=e303]: Multi-page PDFs are rendered per-page before extraction. iPhone HEIC screenshots work out of the box.
+          - generic [ref=e304]:
+            - img [ref=e306]
+            - heading "Keyboard-first" [level=3] [ref=e308]
+            - paragraph [ref=e309]: Full keyboard reordering on the filmstrip, shortcuts for the editor, accessible focus states throughout.
+      - generic [ref=e311]:
+        - heading "Ready to turn screenshots into notes?" [level=2] [ref=e312]
+        - paragraph [ref=e313]: Give it 30 seconds. Drop in a screenshot and see what comes back.
+        - generic [ref=e314]:
+          - link "Create your first note" [ref=e315] [cursor=pointer]:
+            - /url: /new
+            - img
+            - text: Create your first note
+          - link "Try with a sample" [ref=e316] [cursor=pointer]:
+            - /url: /new?sample=true
+            - text: Try with a sample
+            - img
+  - contentinfo [ref=e317]:
+    - generic [ref=e318]:
+      - generic [ref=e319]:
+        - generic [ref=e320]: Powershot
+        - generic [ref=e321]: /
+        - paragraph [ref=e322]: © 2026 All rights reserved.
+      - navigation [ref=e323]:
+        - link "Create Note" [ref=e324] [cursor=pointer]:
+          - /url: /new
+        - link "Privacy Policy" [ref=e325] [cursor=pointer]:
+          - /url: /privacy
+        - link "Support" [ref=e326] [cursor=pointer]:
+          - /url: /donate
+          - img [ref=e327]
+          - text: Support
+  - button "Open Next.js Dev Tools" [ref=e334] [cursor=pointer]:
+    - img [ref=e335]
