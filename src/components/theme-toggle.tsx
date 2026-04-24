@@ -132,8 +132,9 @@ export function ThemeToggle() {
   if (!mounted) {
     return (
       <button
+        type="button"
         aria-label="Toggle theme"
-        className="relative flex h-10 w-10 items-center justify-center rounded-full bg-secondary/80"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full bg-secondary/80 sm:h-10 sm:w-10"
       >
         <div className="h-5 w-5 rounded-full bg-muted-foreground/30" />
       </button>
@@ -156,12 +157,13 @@ export function ThemeToggle() {
 
       {/* Toggle Button */}
       <button
+        type="button"
         ref={buttonRef}
         onClick={toggleTheme}
         disabled={isTransitioning}
         aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
         className={[
-          "group relative flex h-10 w-10 items-center justify-center",
+          "group relative flex h-11 w-11 items-center justify-center sm:h-10 sm:w-10",
           "rounded-full bg-secondary/80 hover:bg-secondary",
           "backdrop-blur-sm",
           "border border-border/50",

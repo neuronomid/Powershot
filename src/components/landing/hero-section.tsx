@@ -11,8 +11,7 @@ export function HeroSection() {
   const ref = useScrollReveal();
 
   return (
-    <section className="relative -mt-[68px] min-h-[100svh] overflow-hidden hero-gradient">
-
+    <section className="relative -mt-[var(--site-header-height)] min-h-[100svh] overflow-hidden hero-gradient">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10"
