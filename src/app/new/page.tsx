@@ -48,6 +48,19 @@ import { loadSampleCaptureMessage } from "@/lib/sample/library";
 
 type IntakeMode = "extension" | "sample" | null;
 
+const CAPTURE_QUEUE_EVENT = "powershot:capture-queued";
+
+type CaptureQueueWindow = Window & {
+  __POWERSHOT_CAPTURE_QUEUE__?: unknown[];
+};
+
+function takeQueuedCaptureMessages(): unknown[] {
+  if (typeof window === "undefined") return [];
+  const queue = (window as CaptureQueueWindow).__POWERSHOT_CAPTURE_QUEUE__;
+  if (!Array.isArray(queue) || queue.length === 0) return [];
+  return queue.splice(0, queue.length);
+}
+
 export default function NewNotePage() {
   return (
     <Suspense fallback={<NewNotePageFallback />}>
@@ -326,42 +339,38 @@ function NewNotePageInner() {
     router.replace("/new");
   }, [clearStagedImages, reset, router]);
 
-  useEffect(() => {
-    const onMessage = async (event: MessageEvent) => {
-      if (event.source !== window || event.origin !== window.location.origin) {
+  const handleCaptureMessage = useCallback(
+    async (message: unknown) => {
+      if (!isPowershotCaptureMessage(message)) {
         return;
       }
 
-      if (!isPowershotCaptureMessage(event.data)) {
+      if (handledCaptureIdsRef.current.has(message.captureId)) {
+        postPowershotCaptureAck(message.captureId, "staged");
         return;
       }
 
-      if (handledCaptureIdsRef.current.has(event.data.captureId)) {
-        postPowershotCaptureAck(event.data.captureId, "staged");
-        return;
-      }
-
-      handledCaptureIdsRef.current.add(event.data.captureId);
+      handledCaptureIdsRef.current.add(message.captureId);
 
       try {
-        const files = await captureMessageToFiles(event.data);
+        const files = await captureMessageToFiles(message);
         await handleFilesAdded(files, [], {
           skipValidation: true,
-          suggestedTitle: event.data.title,
+          suggestedTitle: message.title,
         });
 
-        setIntakeMode(event.data.transient ? "sample" : "extension");
-        if (event.data.autoStart) {
+        setIntakeMode(message.transient ? "sample" : "extension");
+        if (message.autoStart) {
           setPendingAutoRun(true);
         }
 
-        postPowershotCaptureAck(event.data.captureId, "staged");
+        postPowershotCaptureAck(message.captureId, "staged");
       } catch (error) {
-        handledCaptureIdsRef.current.delete(event.data.captureId);
+        handledCaptureIdsRef.current.delete(message.captureId);
         setRejections((prev) => [
           ...prev,
           {
-            name: event.data.title || "Incoming capture",
+            name: message.title || "Incoming capture",
             reason:
               error instanceof Error
                 ? error.message
@@ -369,11 +378,33 @@ function NewNotePageInner() {
           },
         ]);
       }
+    },
+    [handleFilesAdded],
+  );
+
+  useEffect(() => {
+    const drainQueuedCaptures = () => {
+      for (const message of takeQueuedCaptureMessages()) {
+        void handleCaptureMessage(message);
+      }
+    };
+
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== window || event.origin !== window.location.origin) {
+        return;
+      }
+      void handleCaptureMessage(event.data);
     };
 
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [handleFilesAdded]);
+    window.addEventListener(CAPTURE_QUEUE_EVENT, drainQueuedCaptures);
+    drainQueuedCaptures();
+
+    return () => {
+      window.removeEventListener("message", onMessage);
+      window.removeEventListener(CAPTURE_QUEUE_EVENT, drainQueuedCaptures);
+    };
+  }, [handleCaptureMessage]);
 
   useEffect(() => {
     if (searchParams.get("sample") !== "true" || sampleRequestedRef.current) {

@@ -8,6 +8,39 @@ import { ThemeProvider } from "@/components/theme-provider";
 
 import "./globals.css";
 
+const powershotCaptureQueueScript = `
+(function () {
+  if (window.__POWERSHOT_CAPTURE_QUEUE_INSTALLED__) return;
+  window.__POWERSHOT_CAPTURE_QUEUE_INSTALLED__ = true;
+  var queue = window.__POWERSHOT_CAPTURE_QUEUE__ || [];
+  var seen = window.__POWERSHOT_CAPTURE_QUEUE_SEEN__ || new Set();
+  window.__POWERSHOT_CAPTURE_QUEUE__ = queue;
+  window.__POWERSHOT_CAPTURE_QUEUE_SEEN__ = seen;
+
+  window.addEventListener("message", function (event) {
+    if (event.source !== window || event.origin !== window.location.origin) {
+      return;
+    }
+
+    var data = event.data;
+    if (
+      !data ||
+      typeof data !== "object" ||
+      data.type !== "POWERSHOT_CAPTURE" ||
+      typeof data.captureId !== "string" ||
+      !Array.isArray(data.images) ||
+      seen.has(data.captureId)
+    ) {
+      return;
+    }
+
+    seen.add(data.captureId);
+    queue.push(data);
+    window.dispatchEvent(new CustomEvent("powershot:capture-queued"));
+  });
+})();
+`;
+
 const geistSans = Geist({
   variable: "--font-sans",
   subsets: ["latin"],
@@ -50,6 +83,9 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="bg-background text-foreground min-h-full flex flex-col font-sans">
+        <script
+          dangerouslySetInnerHTML={{ __html: powershotCaptureQueueScript }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

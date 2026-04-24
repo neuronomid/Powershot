@@ -176,11 +176,21 @@ test("extension-style captures can be staged through the shared postMessage inta
       {
         type: "POWERSHOT_CAPTURE",
         captureId: "capture-e2e",
-        title: "Visible tab - docs.example.com",
+        title: "Powershot tray - 3 captures",
         images: [
           {
             dataUrl: `data:image/png;base64,${base64}`,
-            title: "Visible tab - docs.example.com",
+            title: "Visible tab - docs.example.com - 1",
+            source: "visible-tab",
+          },
+          {
+            dataUrl: `data:image/png;base64,${base64}`,
+            title: "Visible tab - docs.example.com - 2",
+            source: "visible-tab",
+          },
+          {
+            dataUrl: `data:image/png;base64,${base64}`,
+            title: "Visible tab - docs.example.com - 3",
             source: "visible-tab",
           },
         ],
@@ -189,9 +199,14 @@ test("extension-style captures can be staged through the shared postMessage inta
     );
   }, PNG_BASE64);
 
-  await expect(page.locator("#note-title")).toHaveValue("Visible tab - docs.example.com");
+  await expect(page.locator("#note-title")).toHaveValue("Powershot tray - 3 captures");
   await expect(page.getByText("Capture imported from the Chrome extension")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Reorder Visible tab - docs\.example\.com/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Reorder / })).toHaveCount(3);
+  await expect.poll(() => filmstripNames(page)).toEqual([
+    "visible-tab-docs-example-com-1.png",
+    "visible-tab-docs-example-com-2.png",
+    "visible-tab-docs-example-com-3.png",
+  ]);
 });
 
 test("sample onboarding loads staged assets, auto-runs the pipeline, and can be reset", async ({
