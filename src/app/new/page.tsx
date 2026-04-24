@@ -577,7 +577,7 @@ function NewNotePageInner() {
           </nav>
 
           <header className="flex flex-col gap-4">
-            <h1 className="font-heading text-4xl font-bold tracking-tight sm:text-5xl">
+            <h1 className="font-heading text-4xl font-bold tracking-[-0.04em] text-foreground sm:text-5xl">
               Extract from screenshots
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground font-medium leading-relaxed">
@@ -642,7 +642,7 @@ function NewNotePageInner() {
           <div className="flex flex-col gap-2">
             <label
               htmlFor="note-title"
-              className="text-xs font-bold uppercase tracking-wider text-muted-foreground"
+              className="text-[11px] font-bold uppercase tracking-[0.15em] text-muted-foreground"
             >
               Title
             </label>
@@ -652,7 +652,7 @@ function NewNotePageInner() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Biology lecture — April 22"
-              className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-lg font-semibold text-foreground shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="w-full rounded-xl border border-border/60 bg-background px-4 py-3 text-lg font-semibold text-foreground shadow-sm placeholder:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:border-white/[0.1] dark:bg-white/[0.05] dark:backdrop-blur-sm dark:focus-visible:border-[rgba(100,160,255,0.45)] dark:focus-visible:ring-[rgba(59,126,245,0.1)] dark:focus-visible:shadow-[0_0_16px_rgba(59,126,245,0.12)]"
             />
           </div>
 
@@ -925,7 +925,7 @@ function NewNotePageInner() {
             </Alert>
           )}
 
-          <div className="sticky bottom-4 sm:bottom-8 z-30 mt-auto flex flex-col gap-3 rounded-2xl border border-border/40 bg-background/80 p-3 shadow-2xl backdrop-blur-xl transition-all sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4">
+          <div className="sticky bottom-4 sm:bottom-8 z-30 mt-auto flex flex-col gap-3 rounded-2xl border border-border/40 bg-background/80 p-3 shadow-2xl backdrop-blur-xl transition-all sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4 dark:border-white/[0.06] dark:bg-[#0d1e2d]/80 dark:backdrop-blur-[22px]">
             <p className="mr-auto hidden text-xs font-medium text-muted-foreground sm:block">
               {isRunning
                 ? "Processing your screenshots…"
@@ -1013,25 +1013,25 @@ function NewNotePageInner() {
 function EmptyState({ onPick }: { onPick: () => void }) {
   return (
     <div className="relative group">
-      <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/20 to-blue-500/20 opacity-0 blur transition duration-500 group-hover:opacity-100" />
+      <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/20 to-blue-500/20 opacity-0 blur transition duration-500 group-hover:opacity-100 dark:from-[#7aadff]/15 dark:to-blue-400/15" />
       <button
         type="button"
         onClick={onPick}
-        className="relative flex h-[280px] w-full flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed border-border/60 bg-card/40 transition-all hover:border-primary/40 hover:bg-card/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-[400px] sm:gap-6"
+        className="relative flex h-[280px] w-full flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed border-border/60 bg-card/40 backdrop-blur-sm transition-all hover:border-primary/40 hover:bg-card/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-[400px] sm:gap-6 dark:border-white/[0.12] dark:bg-white/[0.04] dark:hover:border-[rgba(80,160,255,0.55)] dark:hover:bg-white/[0.06] dark:focus-visible:border-[rgba(80,160,255,0.55)] dark:focus-visible:shadow-[0_0_28px_rgba(59,126,245,0.1)]"
       >
-        <div className="relative flex size-20 items-center justify-center rounded-2xl bg-muted shadow-inner transition-transform duration-500 group-hover:scale-110">
-          <Upload className="size-10 text-muted-foreground transition-colors group-hover:text-primary" />
+        <div className="relative flex size-20 items-center justify-center rounded-2xl bg-muted shadow-inner transition-transform duration-500 group-hover:scale-110 dark:bg-white/[0.07] dark:shadow-[0_0_20px_rgba(59,126,245,0.12)]">
+          <Upload className="size-10 text-muted-foreground transition-colors group-hover:text-primary dark:text-[#8da4c4]/60 dark:group-hover:text-[#7aadff]" />
         </div>
         <div className="flex flex-col gap-2 px-8 text-center">
-          <p className="text-xl font-bold tracking-tight text-foreground">
+          <p className="text-xl font-bold tracking-[-0.02em] text-foreground dark:text-[#e8edf8]">
             Drop screenshots here to extract
           </p>
-          <p className="mx-auto max-w-md text-sm font-medium text-muted-foreground leading-relaxed">
+          <p className="mx-auto max-w-md text-sm font-medium text-muted-foreground leading-relaxed dark:text-[#8da4c4]/80">
             Drag files, click to browse, or paste directly from your clipboard.
             One extraction can become a note, flashcards, or both.
           </p>
         </div>
-        <div className="mt-2 flex items-center gap-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">
+        <div className="mt-2 flex items-center gap-8 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 dark:text-[#8da4c4]/50">
           <span className="flex items-center gap-1.5">
             <Sparkles className="size-3" />
             AI Extraction

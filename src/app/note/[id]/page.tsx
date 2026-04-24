@@ -360,7 +360,7 @@ export default function NotePage() {
               Home
             </Link>
           </Button>
-          <h1 className="font-heading text-lg font-semibold tracking-tight truncate">
+          <h1 className="font-heading text-lg font-semibold tracking-[-0.01em] truncate dark:text-[#e8edf8]">
             {note.title}
           </h1>
         </div>

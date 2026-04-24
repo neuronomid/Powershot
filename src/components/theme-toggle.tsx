@@ -4,7 +4,7 @@ import { useTheme } from "next-themes";
 import { useEffect, useState, useRef } from "react";
 
 const LIGHT_BG = "oklch(0.99 0.01 260)";
-const DARK_BG = "oklch(0.08 0.02 260)";
+const DARK_BG = "#0d1e38";
 const OVERLAY_DURATION = 350;
 const VIEW_TRANSITION_DURATION = 500;
 
