@@ -30,6 +30,7 @@ function toPersisted(deck: Deck): PersistedDeck {
 function fromPersisted(p: PersistedDeck): Deck | null {
   const raw = p.data as Deck | undefined;
   if (!raw || typeof raw !== "object") return null;
+  const rawPreferences = raw.preferences;
   return {
     id: p.id,
     name: p.name,
@@ -43,10 +44,14 @@ function fromPersisted(p: PersistedDeck): Deck | null {
       lastReviewedAt: null,
       currentStreakDays: 0,
     },
-    preferences: raw.preferences ?? {
-      styles: [],
-      difficulty: "medium",
-      styleAutoPick: true,
+    preferences: {
+      styles: rawPreferences?.styles ?? [],
+      difficulty: rawPreferences?.difficulty ?? "medium",
+      styleAutoPick: rawPreferences?.styleAutoPick ?? true,
+      generationInstructions:
+        typeof rawPreferences?.generationInstructions === "string"
+          ? rawPreferences.generationInstructions
+          : "",
     },
     _schemaVersion: p._schemaVersion ?? CURRENT_SCHEMA_VERSION,
   };

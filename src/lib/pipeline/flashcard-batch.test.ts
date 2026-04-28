@@ -57,6 +57,7 @@ const preferences: DeckPreferences = {
   styles: [{ style: "basic-qa", count: 1 }],
   difficulty: "medium",
   styleAutoPick: true,
+  generationInstructions: "",
 };
 
 describe("runFlashcardBatchPipeline", () => {
@@ -82,6 +83,7 @@ describe("runFlashcardBatchPipeline", () => {
 
       expect(url).toBe("/api/flashcard/generate");
       expect(body.markdown).toBe("Alpha source");
+      expect(body.instructions).toBe("");
 
       return jsonResponse({
         cards: [
@@ -180,7 +182,10 @@ describe("runFlashcardBatchPipeline", () => {
 
     const result = await runFlashcardBatchPipeline({
       images: [image("one"), image("two")],
-      preferences,
+      preferences: {
+        ...preferences,
+        generationInstructions: "Skip pronunciation cards.",
+      },
       perImageOverrides: [
         {
           imageId: "two",
@@ -198,12 +203,14 @@ describe("runFlashcardBatchPipeline", () => {
         styles: [{ style: "basic-qa", count: 1 }],
         difficulty: "medium",
         autoPick: true,
+        instructions: "Skip pronunciation cards.",
       },
       {
         markdown: "Beta source",
         styles: [{ style: "cloze", count: 2 }],
         difficulty: "challenging",
         autoPick: true,
+        instructions: "Skip pronunciation cards.",
       },
     ]);
     expect(result.cards.map((c) => c.front)).toEqual([

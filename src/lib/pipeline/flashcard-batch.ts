@@ -92,12 +92,18 @@ function resolveImageConfig(
   imageId: string,
   prefs: DeckPreferences,
   overrides: PerImageOverride[] | undefined,
-): { styles: StyleCount[]; difficulty: Difficulty; autoPick: boolean } {
+): {
+  styles: StyleCount[];
+  difficulty: Difficulty;
+  autoPick: boolean;
+  instructions: string;
+} {
   const o = overrides?.find((x) => x.imageId === imageId);
   return {
     styles: o?.styles ?? prefs.styles,
     difficulty: o?.difficulty ?? prefs.difficulty,
     autoPick: prefs.styleAutoPick,
+    instructions: prefs.generationInstructions,
   };
 }
 
@@ -250,6 +256,7 @@ export async function runFlashcardGenerationFromExtraction(
           styles: cfg.styles,
           difficulty: cfg.difficulty,
           autoPick: cfg.autoPick,
+          instructions: cfg.instructions,
         }),
       });
       if (signal?.aborted) return;

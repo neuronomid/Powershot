@@ -12,6 +12,8 @@ describe("flashcard prompts", () => {
     expect(FLASHCARD_SYSTEM_PROMPT).toContain("must consist of words that already appear");
     expect(FLASHCARD_SYSTEM_PROMPT).toContain("Paraphrasing questions is OK");
     expect(FLASHCARD_SYSTEM_PROMPT).toContain("paraphrasing answers is NOT OK");
+    expect(FLASHCARD_SYSTEM_PROMPT).toContain('"userInstructions"');
+    expect(FLASHCARD_SYSTEM_PROMPT).toContain("follow them when selecting card material");
     expect(FLASHCARD_SYSTEM_PROMPT).toContain("Do not invent facts");
   });
 

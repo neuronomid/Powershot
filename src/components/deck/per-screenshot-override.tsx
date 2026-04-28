@@ -39,6 +39,7 @@ export function PerScreenshotOverrideDialog({
       styles: existingOverride.styles ?? globalPreferences.styles,
       difficulty: existingOverride.difficulty ?? globalPreferences.difficulty,
       styleAutoPick: globalPreferences.styleAutoPick,
+      generationInstructions: globalPreferences.generationInstructions,
     };
   }, [existingOverride, globalPreferences]);
 
@@ -88,6 +89,7 @@ export function PerScreenshotOverrideDialog({
           preferences={prefs}
           onChange={setPrefs}
           compact
+          showGenerationInstructions={false}
         />
         <div className="flex items-center justify-between gap-2">
           <Button

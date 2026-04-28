@@ -54,6 +54,7 @@ function fixtureDeck(): Deck {
       styles: [{ style: "basic-qa", count: 1 }],
       difficulty: "medium",
       styleAutoPick: true,
+      generationInstructions: "",
     },
     _schemaVersion: 1,
   };

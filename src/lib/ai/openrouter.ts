@@ -419,15 +419,17 @@ export async function callFlashcardGen(params: {
   styles: StyleCount[];
   difficulty: Difficulty;
   autoPick: boolean;
+  instructions?: string;
   apiKey: string;
 }): Promise<{ cards: FlashcardGenCandidate[] }> {
-  const { markdown, styles, difficulty, autoPick, apiKey } = params;
+  const { markdown, styles, difficulty, autoPick, instructions, apiKey } = params;
   const url = "https://openrouter.ai/api/v1/chat/completions";
 
   const requestBlock = JSON.stringify({
     styles: styles.map((s) => ({ style: s.style, count: s.count })),
     difficulty,
     autoPick,
+    ...(instructions ? { userInstructions: instructions } : {}),
   });
 
   const body: OpenRouterRequest = {

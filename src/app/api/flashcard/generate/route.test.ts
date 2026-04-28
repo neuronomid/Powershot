@@ -115,6 +115,7 @@ describe("POST /api/flashcard/generate", () => {
         styles: [{ style: "basic-qa", count: 1.8 }],
         difficulty: "unknown",
         autoPick: false,
+        instructions: "Skip pronunciation cards.",
       }),
     );
 
@@ -124,6 +125,7 @@ describe("POST /api/flashcard/generate", () => {
       styles: [{ style: "basic-qa", count: 1 }],
       difficulty: "medium",
       autoPick: false,
+      instructions: "Skip pronunciation cards.",
       apiKey: "test-key",
     });
     await expect(response.json()).resolves.toEqual({

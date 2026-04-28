@@ -26,6 +26,7 @@ import { CropOverlay } from "@/components/upload/crop-overlay";
 import { ProgressPanel } from "@/components/pipeline/progress-panel";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { InstructionPromptField } from "@/components/deck/instruction-prompt-field";
 import { createNote } from "@/lib/note/store";
 import { createDeck, appendCardsToDeck } from "@/lib/flashcard/store";
 import { DEFAULT_DECK_PREFERENCES } from "@/lib/flashcard/types";
@@ -90,6 +91,8 @@ function NewNotePageInner() {
   const [pendingAutoRun, setPendingAutoRun] = useState(false);
   const [outcomeAction, setOutcomeAction] = useState<ExtractionOutcome | null>(null);
   const [outcomeError, setOutcomeError] = useState<string | null>(null);
+  const [flashcardGenerationInstructions, setFlashcardGenerationInstructions] =
+    useState("");
   const [flashcardProgress, setFlashcardProgress] = useState<{
     done: number;
     total: number;
@@ -341,14 +344,17 @@ function NewNotePageInner() {
 
     const deck = createDeck({
       name: title.trim() || "Untitled deck",
-      preferences: DEFAULT_DECK_PREFERENCES,
+      preferences: {
+        ...DEFAULT_DECK_PREFERENCES,
+        generationInstructions: flashcardGenerationInstructions.trim(),
+      },
     });
 
     const result = await runFlashcardGenerationFromExtraction({
       images,
       markdown: pipeline.result.markdown,
       anchors: pipeline.result.anchors,
-      preferences: DEFAULT_DECK_PREFERENCES,
+      preferences: deck.preferences,
       deckId: deck.id,
       callbacks: {
         onGenerateStart: () => {
@@ -365,7 +371,7 @@ function NewNotePageInner() {
 
     const savedDeck = await appendCardsToDeck(deck.id, result.cards);
     return savedDeck ?? deck;
-  }, [pipeline.result, images, title]);
+  }, [pipeline.result, images, title, flashcardGenerationInstructions]);
 
   const handleCreateOutcome = useCallback(
     async (outcome: ExtractionOutcome) => {
@@ -444,6 +450,7 @@ function NewNotePageInner() {
     setPendingAutoRun(false);
     setOutcomeAction(null);
     setOutcomeError(null);
+    setFlashcardGenerationInstructions("");
     setFlashcardProgress(null);
     router.replace("/new");
   }, [clearStagedImages, reset, router]);
@@ -888,6 +895,18 @@ function NewNotePageInner() {
                 readOnly
                 value={pipeline.result.markdown}
                 className="min-h-[300px] w-full rounded-xl border border-border/60 bg-muted/30 p-4 font-mono text-sm leading-relaxed text-foreground shadow-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+            </div>
+          )}
+
+          {pipeline.result && (
+            <div className="rounded-2xl border border-border/60 bg-card/50 p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <InstructionPromptField
+                id="new-extraction-flashcard-instructions"
+                value={flashcardGenerationInstructions}
+                onChange={setFlashcardGenerationInstructions}
+                description='Optional. Used only when you create flashcards or both. Example: "Do not make flashcards out of pronunciations from the note."'
+                rows={3}
               />
             </div>
           )}

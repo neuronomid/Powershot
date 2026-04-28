@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { InstructionPromptField } from "@/components/deck/instruction-prompt-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -32,6 +33,7 @@ import { CardEditor } from "@/components/deck/card-editor";
 import {
   getDeck,
   deleteDeck,
+  updateDeck,
   updateCardInDeck,
   deleteCardFromDeck,
   appendCardsToDeck,
@@ -158,6 +160,12 @@ export default function DeckDetailPage() {
       setResumeError(null);
       setQuotaError(false);
 
+      const activeDeck =
+        (await updateDeck(deck.id, { preferences: deck.preferences })) ?? deck;
+      if (activeDeck !== deck) {
+        setDeck(activeDeck);
+      }
+
       const fresh: StagedImage[] = [];
       let addedCount = 0;
       for (const file of files) {
@@ -223,9 +231,12 @@ export default function DeckDetailPage() {
         reset();
         await run({
           images: ordered,
-          preferences: deck.preferences,
-          existingCards: deck.cards.map((c) => ({ front: c.front, back: c.back })),
-          deckId: deck.id,
+          preferences: activeDeck.preferences,
+          existingCards: activeDeck.cards.map((c) => ({
+            front: c.front,
+            back: c.back,
+          })),
+          deckId: activeDeck.id,
         });
       } finally {
         for (const image of fresh) {
@@ -396,6 +407,27 @@ export default function DeckDetailPage() {
               {resumeError}
             </span>
           )}
+        </div>
+        <div className="rounded-2xl border border-border/60 bg-card/50 p-4 shadow-sm">
+          <InstructionPromptField
+            id="deck-generation-instructions"
+            value={deck.preferences.generationInstructions}
+            onChange={(generationInstructions) =>
+              setDeck((current) =>
+                current
+                  ? {
+                      ...current,
+                      preferences: {
+                        ...current.preferences,
+                        generationInstructions,
+                      },
+                    }
+                  : current,
+              )
+            }
+            description='Optional. Applied the next time you generate cards in this deck. Example: "Do not make flashcards out of pronunciations from the note."'
+            rows={3}
+          />
         </div>
         {quotaError && (
           <div className="flex items-start gap-2 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">

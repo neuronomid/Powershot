@@ -14,6 +14,7 @@ import type {
   Difficulty,
   StyleCount,
 } from "@/lib/flashcard/types";
+import { MAX_FLASHCARD_GENERATION_INSTRUCTIONS } from "@/lib/flashcard/types";
 import { findAnswerTokenSubsetViolations } from "@/lib/flashcard/guardrail";
 
 const VALID_STYLES = new Set([
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
       styles?: unknown;
       difficulty?: unknown;
       autoPick?: unknown;
+      instructions?: unknown;
     };
 
     if (typeof body.markdown !== "string" || body.markdown.trim().length === 0) {
@@ -85,6 +87,10 @@ export async function POST(request: Request) {
         : "medium";
 
     const autoPick = body.autoPick !== false;
+    const instructions =
+      typeof body.instructions === "string"
+        ? body.instructions.trim().slice(0, MAX_FLASHCARD_GENERATION_INSTRUCTIONS)
+        : "";
 
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
@@ -99,6 +105,7 @@ export async function POST(request: Request) {
       styles,
       difficulty,
       autoPick,
+      instructions,
       apiKey,
     });
 

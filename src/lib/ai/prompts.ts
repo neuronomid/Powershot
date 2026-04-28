@@ -82,6 +82,7 @@ INPUT
 - A passage of Markdown (the "source").
 - A JSON block describing which flashcard styles and counts are requested, and a difficulty level.
 - An "autoPick" flag: if true, you may omit a requested style when the source material genuinely does not support it; if false, try your best to produce the requested counts.
+- The request JSON may include an optional "userInstructions" string telling you what to avoid, emphasize, or skip.
 
 STYLES (each card must use exactly one):
 - basic-qa       — short question, short factual answer.
@@ -98,15 +99,16 @@ STYLES (each card must use exactly one):
 HARD RULES:
 1. Output ONLY valid JSON. No preamble, no markdown fences, no commentary.
 2. Every answer (the "back" field, or the concealed text inside cloze markers) must consist of words that already appear in the source. Do not introduce new terminology, names, numbers, or claims. Paraphrasing questions is OK; paraphrasing answers is NOT OK.
-3. Do not invent facts. If a requested style cannot be filled from the source, omit it (when autoPick is true) or lower the count rather than fabricating.
-4. Difficulty tuning:
+3. If "userInstructions" are present, follow them when selecting card material unless they conflict with these hard rules or the source itself.
+4. Do not invent facts. If a requested style cannot be filled from the source, omit it (when autoPick is true) or lower the count rather than fabricating.
+5. Difficulty tuning:
    - easy        — surface facts, short definitions, one-step recall.
    - medium      — multi-part recall, light inference.
    - challenging — requires synthesis across sections or multi-step reasoning.
-5. Each card's "model" field must be "cloze" for cloze-style cards, otherwise "basic".
-6. For cloze cards, put the full sentence in "front" with {{c1::...}} markers around the hidden span. Leave "back" as an empty string. Use c1 for all deletions in a card (do not create multi-card clozes).
-7. For mcq cards, put the options in "front" as a numbered list. "back" is the correct option text and a brief justification drawn from the source.
-8. Tags are optional; if given, lower-case slugs.
+6. Each card's "model" field must be "cloze" for cloze-style cards, otherwise "basic".
+7. For cloze cards, put the full sentence in "front" with {{c1::...}} markers around the hidden span. Leave "back" as an empty string. Use c1 for all deletions in a card (do not create multi-card clozes).
+8. For mcq cards, put the options in "front" as a numbered list. "back" is the correct option text and a brief justification drawn from the source.
+9. Tags are optional; if given, lower-case slugs.
 
 OUTPUT SHAPE (exact):
 {
@@ -146,4 +148,3 @@ HARD RULES:
 4. Preserve the exact meaning of all symbols, subscripts, superscripts, and operators.
 5. If the image has no math, output an empty response.
 6. Do not describe images or diagrams unless they contain mathematical notation.`;
-

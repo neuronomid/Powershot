@@ -11,6 +11,7 @@ const preferences: DeckPreferences = {
   ],
   difficulty: "medium",
   styleAutoPick: true,
+  generationInstructions: "",
 };
 
 describe("ConfigPanel", () => {
@@ -50,6 +51,23 @@ describe("ConfigPanel", () => {
     expect(onChange).toHaveBeenLastCalledWith({
       ...preferences,
       difficulty: "challenging",
+    });
+  });
+
+  it("updates the optional instruction prompt", () => {
+    const onChange = vi.fn();
+    render(<ConfigPanel preferences={preferences} onChange={onChange} />);
+
+    fireEvent.change(screen.getByLabelText("Instruction prompt"), {
+      target: {
+        value: "Do not make flashcards out of pronunciations from the note.",
+      },
+    });
+
+    expect(onChange).toHaveBeenLastCalledWith({
+      ...preferences,
+      generationInstructions:
+        "Do not make flashcards out of pronunciations from the note.",
     });
   });
 

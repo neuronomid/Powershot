@@ -53,6 +53,7 @@ describe("OpenRouter flashcard calls", () => {
       styles: [{ style: "basic-qa", count: 1 }],
       difficulty: "challenging",
       autoPick: false,
+      instructions: "Skip pronunciation cards.",
       apiKey: "test-key",
     });
 
@@ -63,6 +64,9 @@ describe("OpenRouter flashcard calls", () => {
     expect(body.messages[0].content).toContain("Every answer");
     expect(body.messages[1].content[0].text).toContain(
       '"style":"basic-qa","count":1',
+    );
+    expect(body.messages[1].content[0].text).toContain(
+      '"userInstructions":"Skip pronunciation cards."',
     );
     expect(body.messages[1].content[0].text).toContain(
       "SOURCE:\nATP synthase produces ATP.",
@@ -89,6 +93,7 @@ describe("OpenRouter flashcard calls", () => {
         styles: [{ style: "basic-qa", count: 1 }],
         difficulty: "medium",
         autoPick: true,
+        instructions: "",
         apiKey: "test-key",
       }),
     ).rejects.toThrow();
@@ -134,6 +139,7 @@ describe("OpenRouter flashcard calls", () => {
         styles: [{ style: "basic-qa", count: 1 }],
         difficulty: "easy",
         autoPick: true,
+        instructions: "",
         apiKey: "test-key",
       }),
     ).resolves.toEqual({

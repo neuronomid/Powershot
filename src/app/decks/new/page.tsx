@@ -289,7 +289,7 @@ export default function NewDeckPage() {
             </h1>
             <p className="max-w-2xl text-lg text-muted-foreground font-medium leading-relaxed">
               Upload screenshots and let AI generate flashcards. Configure
-              styles and difficulty below.
+              styles, difficulty, and any generation instructions below.
             </p>
           </header>
 

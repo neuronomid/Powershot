@@ -104,10 +104,13 @@ export type StyleCount = {
   count: number;
 };
 
+export const MAX_FLASHCARD_GENERATION_INSTRUCTIONS = 500;
+
 export type DeckPreferences = {
   styles: StyleCount[];
   difficulty: Difficulty;
   styleAutoPick: boolean;
+  generationInstructions: string;
 };
 
 export type PerImageOverride = {
@@ -159,6 +162,7 @@ export const DEFAULT_DECK_PREFERENCES: DeckPreferences = {
   ],
   difficulty: "medium",
   styleAutoPick: true,
+  generationInstructions: "",
 };
 
 export type FlashcardGenCandidate = {
@@ -178,6 +182,7 @@ export type FlashcardGenRequest = {
   styles: StyleCount[];
   difficulty: Difficulty;
   autoPick: boolean;
+  instructions?: string;
   sourceImageId?: string;
   sourceImageIndex?: number;
 };

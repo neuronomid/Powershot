@@ -3,6 +3,7 @@
 import { Info } from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
+import { InstructionPromptField } from "./instruction-prompt-field";
 import { cn } from "@/lib/utils";
 import type {
   DeckPreferences,
@@ -20,11 +21,17 @@ type Props = {
   preferences: DeckPreferences;
   onChange: (next: DeckPreferences) => void;
   compact?: boolean;
+  showGenerationInstructions?: boolean;
 };
 
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "challenging"];
 
-export function ConfigPanel({ preferences, onChange, compact }: Props) {
+export function ConfigPanel({
+  preferences,
+  onChange,
+  compact,
+  showGenerationInstructions = true,
+}: Props) {
   const byStyle = new Map(preferences.styles.map((s) => [s.style, s.count]));
 
   function toggleStyle(style: FlashcardStyle) {
@@ -130,6 +137,17 @@ export function ConfigPanel({ preferences, onChange, compact }: Props) {
           ))}
         </div>
       </div>
+
+      {showGenerationInstructions && (
+        <InstructionPromptField
+          id="flashcard-generation-instructions"
+          value={preferences.generationInstructions}
+          onChange={(generationInstructions) =>
+            onChange({ ...preferences, generationInstructions })
+          }
+          rows={compact ? 3 : 4}
+        />
+      )}
 
       <div className="flex items-start gap-2 rounded-lg bg-muted/40 p-3 text-[11px] leading-snug text-muted-foreground">
         <Info className="size-3.5 shrink-0 text-primary" />

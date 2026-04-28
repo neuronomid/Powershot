@@ -89,6 +89,7 @@ function deck() {
       styles: [],
       difficulty: "medium",
       styleAutoPick: true,
+      generationInstructions: "",
     },
     _schemaVersion: 1,
   };
